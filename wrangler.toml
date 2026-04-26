@@ -5,4 +5,4 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "immo-tracker-db"
-database_id = "YOUR_D1_DATABASE_ID"
+database_id = "d2662fa1-5f58-4370-81e7-4fbc97ad3d9a"
