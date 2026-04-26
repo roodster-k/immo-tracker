@@ -1,13 +1,14 @@
 // src/components/PropertyCard.jsx
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bed, Ruler, MapPin, Calendar, Phone } from 'lucide-react'
+import { Bed, Ruler, MapPin, Calendar } from 'lucide-react'
 import { ScorePill, StatusBadge, Card } from './ui.jsx'
 import { formatPrice, formatDate } from '../lib/utils.js'
 
 export default function PropertyCard({ property, onSelect, selected }) {
   const navigate = useNavigate()
   const p = property
+  const open = () => onSelect ? onSelect(p) : navigate(`/biens/${p.id}`)
 
   return (
     <Card
@@ -17,8 +18,17 @@ export default function PropertyCard({ property, onSelect, selected }) {
         outlineOffset: 2,
         transition: 'box-shadow 0.15s, transform 0.15s',
       }}
-      onClick={() => onSelect ? onSelect(p) : navigate(`/biens/${p.id}`)}
-      className="animate-fadeup"
+      onClick={open}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          open()
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-pressed={onSelect ? Boolean(selected) : undefined}
+      className="animate-fadeup clickable-card"
     >
       {/* Top row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>

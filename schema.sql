@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS properties (
   contact_type TEXT,
   contact_tel TEXT,
   contact_email TEXT,
+  email_contact TEXT,
   description TEXT,
   score INTEGER,
   score_raison TEXT,
@@ -39,5 +40,4 @@ CREATE TABLE IF NOT EXISTS settings (
 -- Default settings
 INSERT OR IGNORE INTO settings (key, value) VALUES
   ('criteria', ''),
-  ('user_name', ''),
-  ('gemini_key', '');
+  ('user_name', '');

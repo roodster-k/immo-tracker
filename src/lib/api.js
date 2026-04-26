@@ -9,7 +9,13 @@ async function req(path, options = {}) {
     ...options,
     body: options.body ? JSON.stringify(options.body) : undefined,
   })
-  const data = await res.json()
+  const text = await res.text()
+  let data = {}
+  try {
+    data = text ? JSON.parse(text) : {}
+  } catch {
+    throw new Error(text || 'Réponse API invalide')
+  }
   if (!res.ok || data.error) throw new Error(data.error || 'Erreur réseau')
   return data
 }

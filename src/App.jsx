@@ -8,18 +8,14 @@ import Properties from './pages/Properties.jsx'
 import PropertyDetail from './pages/PropertyDetail.jsx'
 import Compare from './pages/Compare.jsx'
 import Settings from './pages/Settings.jsx'
+import NotFound from './pages/NotFound.jsx'
 
 export default function App() {
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div className="app-shell">
+      <a className="skip-link" href="#main-content">Aller au contenu</a>
       <Sidebar />
-      <main style={{
-        marginLeft: 220,
-        flex: 1,
-        padding: '2rem 2.5rem',
-        minHeight: '100vh',
-        background: 'var(--paper)',
-      }}>
+      <main id="main-content" className="app-main">
         <Routes>
           <Route path="/"           element={<Dashboard />} />
           <Route path="/add"        element={<AddProperty />} />
@@ -27,6 +23,7 @@ export default function App() {
           <Route path="/biens/:id"  element={<PropertyDetail />} />
           <Route path="/comparer"   element={<Compare />} />
           <Route path="/settings"   element={<Settings />} />
+          <Route path="*"           element={<NotFound />} />
         </Routes>
       </main>
     </div>

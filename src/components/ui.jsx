@@ -47,7 +47,7 @@ export function StatusBadge({ status }) {
 }
 
 export function Button({ children, onClick, variant = 'primary', size = 'md', disabled, className, type = 'button' }) {
-  const base = 'inline-flex items-center gap-2 font-medium rounded-lg transition-all cursor-pointer border disabled:opacity-40 disabled:cursor-not-allowed'
+  const base = 'ui-button inline-flex items-center gap-2 font-medium rounded-lg transition-all cursor-pointer border disabled:opacity-40 disabled:cursor-not-allowed'
   const sizes = { sm: 'px-3 py-1.5 text-sm', md: 'px-4 py-2 text-sm', lg: 'px-5 py-2.5 text-base' }
   const variants = {
     primary: { background: 'var(--ink)', color: 'var(--paper)', borderColor: 'var(--ink)' },
@@ -75,6 +75,7 @@ export function Input({ label, id, error, ...props }) {
       {label && <label htmlFor={id} style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink-2)' }}>{label}</label>}
       <input
         id={id}
+        className="ui-input"
         style={{
           padding: '8px 12px', borderRadius: 'var(--r-sm)',
           border: `1px solid ${error ? 'var(--red)' : 'var(--border)'}`,
@@ -95,6 +96,7 @@ export function Textarea({ label, id, ...props }) {
       {label && <label htmlFor={id} style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink-2)' }}>{label}</label>}
       <textarea
         id={id}
+        className="ui-input"
         style={{
           padding: '10px 12px', borderRadius: 'var(--r-sm)',
           border: '1px solid var(--border)',
@@ -114,6 +116,7 @@ export function Select({ label, id, children, ...props }) {
       {label && <label htmlFor={id} style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink-2)' }}>{label}</label>}
       <select
         id={id}
+        className="ui-input"
         style={{
           padding: '8px 12px', borderRadius: 'var(--r-sm)',
           border: '1px solid var(--border)',
@@ -129,10 +132,10 @@ export function Select({ label, id, children, ...props }) {
   )
 }
 
-export function Card({ children, className, style }) {
+export function Card({ children, className, style, ...props }) {
   return (
     <div
-      className={className}
+      className={cn('ui-card', className)}
       style={{
         background: 'var(--paper)',
         border: '1px solid var(--border)',
@@ -141,6 +144,7 @@ export function Card({ children, className, style }) {
         boxShadow: 'var(--shadow-sm)',
         ...style,
       }}
+      {...props}
     >
       {children}
     </div>
@@ -160,11 +164,16 @@ export function Spinner({ size = 18 }) {
 }
 
 export function Empty({ icon, title, desc }) {
+  const Icon = typeof icon === 'function' ? icon : null
   return (
     <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--ink-3)' }}>
-      {icon && <div style={{ fontSize: 36, marginBottom: 12 }}>{icon}</div>}
-      <p style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: 'var(--ink-2)', marginBottom: 6 }}>{title}</p>
-      {desc && <p style={{ fontSize: 14 }}>{desc}</p>}
+      {Icon && (
+        <div style={{ width: 48, height: 48, margin: '0 auto 14px', borderRadius: 'var(--r-lg)', background: 'var(--paper-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-2)' }}>
+          <Icon size={22} strokeWidth={1.8} aria-hidden="true" />
+        </div>
+      )}
+      <p style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--ink-2)', marginBottom: 6 }}>{title}</p>
+      {desc && <p style={{ fontSize: 14, maxWidth: 420, margin: '0 auto' }}>{desc}</p>}
     </div>
   )
 }

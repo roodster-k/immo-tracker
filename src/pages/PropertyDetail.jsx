@@ -15,6 +15,7 @@ export default function PropertyDetail() {
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     getProperty(id)
@@ -32,6 +33,8 @@ export default function PropertyDetail() {
     try {
       await updateProperty(id, { status, notes })
       setProperty(p => ({ ...p, status, notes }))
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
     } finally {
       setSaving(false)
     }
@@ -56,7 +59,7 @@ export default function PropertyDetail() {
   const score = p.score || 0
 
   return (
-    <div style={{ maxWidth: 820, animation: 'fadeUp 0.35s ease both' }}>
+    <div className="page-shell" style={{ maxWidth: 940 }}>
       {/* Back */}
       <button onClick={() => navigate('/biens')} style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--ink-3)', fontSize: 14, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 20 }}>
         <ArrowLeft size={15} /> Retour aux biens
@@ -86,7 +89,7 @@ export default function PropertyDetail() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20, alignItems: 'start' }}>
+      <div className="detail-layout">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           {/* Details */}
           <Card>
@@ -142,6 +145,21 @@ export default function PropertyDetail() {
                 </div>
               )}
             </div>
+            {p.email_contact && (
+              <div style={{ paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Email suggéré</div>
+                <div style={{ background: 'var(--paper-2)', borderRadius: 'var(--r-md)', padding: '12px 14px', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', color: 'var(--ink-2)', marginBottom: 10 }}>
+                  {p.email_contact}
+                </div>
+                <Button variant="secondary" size="sm" onClick={copyEmail}>
+                  {copied ? <Check size={13} /> : <Copy size={13} />}
+                  {copied ? 'Copié' : 'Copier'}
+                </Button>
+              </div>
+            )}
+            {!p.contact_nom && !p.contact_tel && !p.contact_email && !p.email_contact && (
+              <p style={{ color: 'var(--ink-3)', fontSize: 14 }}>Aucune information de contact détectée pour ce bien.</p>
+            )}
           </Card>
         </div>
 
@@ -163,7 +181,7 @@ export default function PropertyDetail() {
               />
               <Button onClick={handleSave} disabled={saving}>
                 {saving ? <Spinner size={13} /> : <Save size={13} />}
-                Enregistrer
+                {saved ? 'Enregistré' : 'Enregistrer'}
               </Button>
             </div>
           </Card>

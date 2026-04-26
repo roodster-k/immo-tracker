@@ -1,7 +1,6 @@
 // src/pages/Properties.jsx
 import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Search, Download, Filter } from 'lucide-react'
+import { Search, Download } from 'lucide-react'
 import { getProperties } from '../lib/api.js'
 import PropertyCard from '../components/PropertyCard.jsx'
 import { Button, Spinner, Empty } from '../components/ui.jsx'
@@ -44,15 +43,13 @@ export default function Properties() {
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+    <div className="page-shell">
+      <div className="page-header">
         <div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--ink)', letterSpacing: '-0.02em', marginBottom: 4 }}>
-            Mes biens
-          </h1>
-          <p style={{ color: 'var(--ink-3)', fontSize: 15 }}>{properties.length} bien{properties.length !== 1 ? 's' : ''} en suivi</p>
+          <h1 className="page-title">Mes biens</h1>
+          <p className="page-subtitle">{properties.length} bien{properties.length !== 1 ? 's' : ''} en suivi</p>
         </div>
-        <Button variant="secondary" size="sm" onClick={exportCSV}>
+        <Button variant="secondary" size="sm" onClick={exportCSV} disabled={!properties.length}>
           <Download size={14} /> Exporter CSV
         </Button>
       </div>
@@ -97,9 +94,9 @@ export default function Properties() {
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '4rem' }}><Spinner size={28} /></div>
       ) : filtered.length === 0 ? (
-        <Empty icon="🔍" title="Aucun résultat" desc="Modifiez vos filtres ou ajoutez un nouveau bien." />
+        <Empty icon={Search} title="Aucun résultat" desc="Modifiez vos filtres ou ajoutez un nouveau bien." />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+        <div className="responsive-grid">
           {filtered.map((p, i) => (
             <div key={p.id} style={{ animationDelay: `${i * 0.05}s` }}>
               <PropertyCard property={p} />

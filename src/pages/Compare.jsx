@@ -4,21 +4,21 @@ import { getProperties } from '../lib/api.js'
 import PropertyCard from '../components/PropertyCard.jsx'
 import { Card, Empty, Spinner, ScoreBar } from '../components/ui.jsx'
 import { formatPrice } from '../lib/utils.js'
-import { GitCompare, Check, X } from 'lucide-react'
+import { ArrowDown, Check, Home } from 'lucide-react'
 
 const MAX = 3
 
 const COMPARE_FIELDS = [
-  { key: 'price_raw', label: 'Prix', fn: p => p.price_raw || formatPrice(p.price) },
-  { key: 'surface_hab', label: 'Surface hab.', fn: p => p.surface_hab ? `${p.surface_hab} m²` : '—' },
-  { key: 'surface_terrain', label: 'Terrain', fn: p => p.surface_terrain ? `${p.surface_terrain} m²` : '—' },
-  { key: 'nb_chambres', label: 'Chambres', fn: p => p.nb_chambres || '—' },
-  { key: 'peb', label: 'PEB', fn: p => p.peb || '—' },
-  { key: 'etat', label: 'État', fn: p => p.etat || '—' },
-  { key: 'localisation', label: 'Localisation', fn: p => p.localisation || '—' },
-  { key: 'source', label: 'Source', fn: p => p.source || '—' },
-  { key: 'contact_type', label: 'Contact', fn: p => p.contact_type || '—' },
-  { key: 'score', label: 'Score', fn: p => `${p.score || 0}/100`, isScore: true },
+  { key: 'price', label: 'Prix', fn: p => p.price_raw || formatPrice(p.price), mode: 'lower' },
+  { key: 'surface_hab', label: 'Surface hab.', fn: p => p.surface_hab ? `${p.surface_hab} m²` : '—', mode: 'higher' },
+  { key: 'surface_terrain', label: 'Terrain', fn: p => p.surface_terrain ? `${p.surface_terrain} m²` : '—', mode: 'higher' },
+  { key: 'nb_chambres', label: 'Chambres', fn: p => p.nb_chambres ?? '—', mode: 'higher' },
+  { key: 'peb', label: 'PEB', fn: p => p.peb || '—', mode: 'neutral' },
+  { key: 'etat', label: 'État', fn: p => p.etat || '—', mode: 'neutral' },
+  { key: 'localisation', label: 'Localisation', fn: p => p.localisation || '—', mode: 'neutral' },
+  { key: 'source', label: 'Source', fn: p => p.source || '—', mode: 'neutral' },
+  { key: 'contact_type', label: 'Contact', fn: p => p.contact_type || '—', mode: 'neutral' },
+  { key: 'score', label: 'Score', fn: p => `${p.score || 0}/100`, mode: 'higher' },
 ]
 
 export default function Compare() {
@@ -46,22 +46,22 @@ export default function Compare() {
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '4rem' }}><Spinner size={28} /></div>
 
   return (
-    <div>
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--ink)', letterSpacing: '-0.02em', marginBottom: 6 }}>
-          Comparer des biens
-        </h1>
-        <p style={{ color: 'var(--ink-3)', fontSize: 15 }}>
+    <div className="page-shell">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Comparer des biens</h1>
+          <p className="page-subtitle">
           Sélectionnez 2 ou 3 biens pour les comparer côte à côte.{' '}
           <span style={{ fontWeight: 600, color: 'var(--ink-2)' }}>{selected.length}/{MAX} sélectionnés</span>
-        </p>
+          </p>
+        </div>
       </div>
 
       {/* Selection grid */}
       {!comparing && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, marginBottom: 32 }}>
+        <div className="responsive-grid" style={{ marginBottom: 32 }}>
           {properties.length === 0 ? (
-            <Empty icon="🏠" title="Aucun bien à comparer" desc="Ajoutez d'abord des biens via la page d'ajout." />
+            <Empty icon={Home} title="Aucun bien à comparer" desc="Ajoutez d'abord des biens via la page d'ajout." />
           ) : properties.map(p => (
             <PropertyCard
               key={p.id}
@@ -101,7 +101,7 @@ export default function Compare() {
           </div>
 
           {/* Table */}
-          <Card style={{ overflowX: 'auto', padding: 0 }}>
+          <Card className="table-scroll" style={{ padding: 0 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--paper-2)' }}>
@@ -116,11 +116,14 @@ export default function Compare() {
                 </tr>
               </thead>
               <tbody>
-                {COMPARE_FIELDS.map(({ key, label, fn, isScore }, ri) => {
-                  const vals = selected.map(p => fn(p))
+                {COMPARE_FIELDS.map(({ key, label, fn, mode }, ri) => {
                   const numVals = selected.map(p => typeof p[key] === 'number' ? p[key] : null).filter(v => v !== null)
-                  const best = numVals.length > 1 ? Math.max(...numVals) : null
-                  const worst = numVals.length > 1 ? Math.min(...numVals) : null
+                  const best = numVals.length > 1 && mode !== 'neutral'
+                    ? (mode === 'lower' ? Math.min(...numVals) : Math.max(...numVals))
+                    : null
+                  const worst = numVals.length > 1 && mode !== 'neutral'
+                    ? (mode === 'lower' ? Math.max(...numVals) : Math.min(...numVals))
+                    : null
 
                   return (
                     <tr key={key} style={{ background: ri % 2 === 0 ? 'var(--paper)' : 'var(--paper-2)', borderTop: '1px solid var(--border)' }}>
@@ -134,8 +137,8 @@ export default function Compare() {
                         return (
                           <td key={p.id} style={{ padding: '11px 16px', fontSize: 14, color: 'var(--ink)', borderLeft: '1px solid var(--border)', background: isBest ? 'rgba(45,106,79,0.06)' : isWorst ? 'rgba(181,32,13,0.04)' : 'transparent' }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              {isBest && <span style={{ color: 'var(--green)', fontSize: 11 }}>✓</span>}
-                              {isWorst && <span style={{ color: 'var(--red)', fontSize: 11 }}>↓</span>}
+                              {isBest && <Check size={13} strokeWidth={2.2} style={{ color: 'var(--green)', flexShrink: 0 }} />}
+                              {isWorst && <ArrowDown size={13} strokeWidth={2.2} style={{ color: 'var(--red)', flexShrink: 0 }} />}
                               {val}
                             </span>
                           </td>

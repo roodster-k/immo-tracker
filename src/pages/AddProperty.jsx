@@ -52,13 +52,11 @@ export default function AddProperty() {
     try {
       const payload = {
         ...extracted,
-        email_contact: undefined,
         notes,
         status,
         raw_annonce: annonce,
         url: annonce.startsWith('http') ? annonce.split('\n')[0] : null,
       }
-      delete payload.email_contact
       const res = await createProperty(payload)
       navigate(`/biens/${res.id}`)
     } catch (e) {
@@ -77,13 +75,15 @@ export default function AddProperty() {
   const score = extracted?.score || 0
 
   return (
-    <div style={{ maxWidth: 780, animation: 'fadeUp 0.35s ease both' }}>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--ink)', marginBottom: 6, letterSpacing: '-0.02em' }}>
-        Ajouter un bien
-      </h1>
-      <p style={{ color: 'var(--ink-3)', fontSize: 15, marginBottom: 28 }}>
-        Colle le texte d'une annonce — Gemini extrait tout automatiquement.
-      </p>
+    <div className="page-shell" style={{ maxWidth: 820 }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Ajouter un bien</h1>
+          <p className="page-subtitle">
+            Colle le texte complet d'une annonce, ou une URL quand le site autorise la lecture serveur.
+          </p>
+        </div>
+      </div>
 
       <Card style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
@@ -207,7 +207,7 @@ export default function AddProperty() {
           {/* Save section */}
           <Card>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, marginBottom: 14 }}>Enregistrer le bien</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: 16, marginBottom: 14 }}>
+            <div className="form-grid" style={{ marginBottom: 14 }}>
               <Textarea
                 label="Notes personnelles"
                 value={notes}

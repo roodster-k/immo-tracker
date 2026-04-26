@@ -25,8 +25,8 @@ export default function Dashboard() {
     acc[p.status || 'nouveau'] = (acc[p.status || 'nouveau'] || 0) + 1
     return acc
   }, {})
-  const recent = [...properties].slice(0, 4)
-  const avgPrice = total ? Math.round(properties.filter(p => p.price).reduce((s, p) => s + p.price, 0) / properties.filter(p => p.price).length) : 0
+  const priced = properties.filter(p => Number.isFinite(Number(p.price)))
+  const avgPrice = priced.length ? Math.round(priced.reduce((s, p) => s + Number(p.price), 0) / priced.length) : null
 
   if (loading) {
     return (
@@ -37,20 +37,19 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={{ animation: 'fadeUp 0.4s ease both' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 30, color: 'var(--ink)', letterSpacing: '-0.02em', marginBottom: 6 }}>
-          Tableau de bord
-        </h1>
-        <p style={{ color: 'var(--ink-3)', fontSize: 15 }}>
+    <div className="page-shell">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Tableau de bord</h1>
+          <p className="page-subtitle">
           {total === 0 ? 'Aucun bien suivi pour le moment.' : `${total} bien${total > 1 ? 's' : ''} en suivi`}
-        </p>
+          </p>
+        </div>
       </div>
 
       {total === 0 ? (
         <Empty
-          icon="🏠"
+          icon={Home}
           title="Commencez votre recherche"
           desc="Ajoutez votre premier bien pour démarrer le suivi."
         />
@@ -61,7 +60,7 @@ export default function Dashboard() {
             {[
               { label: 'Biens suivis', value: total, icon: Home, color: 'var(--blue)' },
               { label: 'Score moyen', value: `${avgScore}/100`, icon: Star, color: 'var(--gold)' },
-              { label: 'Prix moyen', value: formatPrice(avgPrice), icon: TrendingUp, color: 'var(--green)' },
+              { label: 'Prix moyen', value: avgPrice ? formatPrice(avgPrice) : '—', icon: TrendingUp, color: 'var(--green)' },
               { label: 'En visite', value: (byStatus.visite_planifiee || 0) + (byStatus.visite_faite || 0), icon: Eye, color: 'var(--red)' },
             ].map(({ label, value, icon: Icon, color }) => (
               <Card key={label} style={{ background: 'var(--paper)' }}>
@@ -76,7 +75,7 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, alignItems: 'start' }}>
+          <div className="dashboard-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 320px', gap: 20, alignItems: 'start' }}>
             {/* Top biens */}
             <Card>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
@@ -108,7 +107,7 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <ScoreBar score={p.score || 0} />
-                      <div style={{ fontSize: 11, color: 'var(--ink-3)', textAlign: 'right', marginTop: 2 }}>{p.score}/100</div>
+                      <div style={{ fontSize: 11, color: 'var(--ink-3)', textAlign: 'right', marginTop: 2 }}>{p.score || 0}/100</div>
                     </div>
                   </div>
                 ))}
