@@ -358,17 +358,17 @@ Format JSON attendu (tous les champs, null si inconnu) :
       if (geminiData.error) return json({ error: geminiData.error.message }, 500)
 
       const text = geminiText(geminiData)
-      if (!text) return json({ error: ‘Réponse Gemini vide ou bloquée’ }, 502)
+      if (!text) return json({ error: 'Réponse Gemini vide ou bloquée' }, 502)
 
       const extracted = normalizeExtracted(parseGeminiJson(text))
 
-      if (extracted.error === ‘CONTENU_ANNONCE_INACCESSIBLE’) {
+      if (extracted.error === 'CONTENU_ANNONCE_INACCESSIBLE') {
         const urlContextOk = hasUrlContextSuccess(geminiData)
-        const urlContextStatus = urlContextStatuses(geminiData).join(‘, ‘) || ‘aucun accès’
+        const urlContextStatus = urlContextStatuses(geminiData).join(', ') || 'aucun accès'
         const detail = useUrlContext
-          ? ` (fetch: ${fetchFailureReason || ‘échec’}; URL Context: ${urlContextOk ? ‘OK’ : urlContextStatus})`
-          : ‘’
-        return json({ error: `Impossible de récupérer le contenu de cette URL${detail}. Colle le texte complet de l’annonce pour éviter une extraction inventée.` }, 422)
+          ? ` (fetch: ${fetchFailureReason || 'échec'}; URL Context: ${urlContextOk ? 'OK' : urlContextStatus})`
+          : ''
+        return json({ error: `Impossible de récupérer le contenu de cette URL${detail}. Colle le texte complet de l'annonce pour éviter une extraction inventée.` }, 422)
       }
 
       return json({ ok: true, data: extracted })
