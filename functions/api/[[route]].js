@@ -36,20 +36,9 @@ function isImmowebUrl(value) {
   return hostname === 'immoweb.be' || hostname.endsWith('.immoweb.be')
 }
 
-// Normalise les URLs sans protocole (ex: www.immoweb.be/...) → https://
-function normalizeUrl(value) {
-  const trimmed = value.trim()
-  if (
-    !trimmed.startsWith('http://') &&
-    !trimmed.startsWith('https://') &&
-    /^www\.[a-z0-9-]+\.[a-z]{2,}/i.test(trimmed)
-  ) {
-    try {
-      new URL('https://' + trimmed)
-      return 'https://' + trimmed
-    } catch { /* pas une URL valide */ }
-  }
-  return trimmed
+// Détecte immoweb.be dans toute forme : https://, http://, www., ou domaine nu
+function isImmowebInput(value) {
+  return /^(?:https?:\/\/)?(?:www\.)?immoweb\.be\//i.test(value.trim())
 }
 
 function stripHtml(html) {
@@ -274,15 +263,16 @@ export async function onRequest(context) {
 
       if (!geminiKey) return json({ error: 'GEMINI_KEY non configurée' }, 500)
 
-      const originalAnnonce = normalizeUrl((annonce || '').trim())
+      const originalAnnonce = (annonce || '').trim()
       const isUrlAnnonce = isHttpUrl(originalAnnonce)
       let useUrlContext = false
       let fetchFailureReason = ''
 
+      if (isImmowebInput(originalAnnonce)) {
+        return json({ error: "Immoweb ne permet pas une lecture fiable depuis une URL seule. Colle le texte complet de l'annonce pour éviter une extraction inventée." }, 422)
+      }
+
       if (isUrlAnnonce) {
-        if (isImmowebUrl(originalAnnonce)) {
-          return json({ error: "Immoweb ne permet pas une lecture fiable depuis une URL seule. Colle le texte complet de l'annonce pour éviter une extraction inventée." }, 422)
-        }
 
         const fetched = await fetchUrlText(originalAnnonce)
 
