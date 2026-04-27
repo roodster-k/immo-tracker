@@ -36,6 +36,22 @@ function isImmowebUrl(value) {
   return hostname === 'immoweb.be' || hostname.endsWith('.immoweb.be')
 }
 
+// Normalise les URLs sans protocole (ex: www.immoweb.be/...) → https://
+function normalizeUrl(value) {
+  const trimmed = value.trim()
+  if (
+    !trimmed.startsWith('http://') &&
+    !trimmed.startsWith('https://') &&
+    /^www\.[a-z0-9-]+\.[a-z]{2,}/i.test(trimmed)
+  ) {
+    try {
+      new URL('https://' + trimmed)
+      return 'https://' + trimmed
+    } catch { /* pas une URL valide */ }
+  }
+  return trimmed
+}
+
 function stripHtml(html) {
   return html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
@@ -258,7 +274,7 @@ export async function onRequest(context) {
 
       if (!geminiKey) return json({ error: 'GEMINI_KEY non configurée' }, 500)
 
-      const originalAnnonce = (annonce || '').trim()
+      const originalAnnonce = normalizeUrl((annonce || '').trim())
       const isUrlAnnonce = isHttpUrl(originalAnnonce)
       let useUrlContext = false
       let fetchFailureReason = ''
@@ -352,16 +368,19 @@ Format JSON attendu (tous les champs, null si inconnu) :
       const geminiData = await geminiRes.json()
       if (geminiData.error) return json({ error: geminiData.error.message }, 500)
 
-      if (useUrlContext && !hasUrlContextSuccess(geminiData)) {
-        const status = urlContextStatuses(geminiData).join(', ') || 'aucun statut'
-        return json({ error: `Impossible de récupérer le contenu de cette URL (fetch: ${fetchFailureReason || 'échec inconnu'}; URL Context: ${status}). Colle le texte complet de l'annonce pour éviter une extraction inventée.` }, 422)
-      }
-
       const text = geminiText(geminiData)
-      if (!text) return json({ error: 'Réponse Gemini vide ou bloquée' }, 502)
+      if (!text) return json({ error: ‘Réponse Gemini vide ou bloquée’ }, 502)
 
       const extracted = normalizeExtracted(parseGeminiJson(text))
-      if (extracted.error) return json({ error: 'Contenu de l’annonce inaccessible : colle le texte complet de l’annonce.' }, 422)
+
+      if (extracted.error === ‘CONTENU_ANNONCE_INACCESSIBLE’) {
+        const urlContextOk = hasUrlContextSuccess(geminiData)
+        const urlContextStatus = urlContextStatuses(geminiData).join(‘, ‘) || ‘aucun accès’
+        const detail = useUrlContext
+          ? ` (fetch: ${fetchFailureReason || ‘échec’}; URL Context: ${urlContextOk ? ‘OK’ : urlContextStatus})`
+          : ‘’
+        return json({ error: `Impossible de récupérer le contenu de cette URL${detail}. Colle le texte complet de l’annonce pour éviter une extraction inventée.` }, 422)
+      }
 
       return json({ ok: true, data: extracted })
     }
