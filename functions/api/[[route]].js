@@ -122,10 +122,9 @@ function hasUrlContextSuccess(data) {
 
 function parseGeminiJson(text) {
   const cleaned = text.replace(/```json|```/g, '').trim()
-  const jsonText = cleaned.startsWith('{')
-    ? cleaned
-    : cleaned.match(/\{[\s\S]*\}/)?.[0]
-
+  // Toujours extraire l'objet JSON via regex — évite les erreurs si Gemini
+  // ajoute du texte après le JSON (ex: explications, notes)
+  const jsonText = cleaned.match(/\{[\s\S]*\}/)?.[0]
   if (!jsonText) throw new Error('Réponse Gemini sans JSON exploitable')
   return JSON.parse(jsonText)
 }
