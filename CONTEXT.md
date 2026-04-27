@@ -8,9 +8,12 @@ Son role attendu est de permettre a un utilisateur de :
 
 - coller le contenu d'une annonce immobiliere, ou une URL quand le site autorise la lecture serveur ;
 - extraire automatiquement les informations importantes avec Gemini ;
+- generer un tag de regroupement `Ville - Type de bien` lors de l'import ;
 - attribuer un score au bien selon ses criteres personnels ;
 - sauvegarder les biens dans une base Cloudflare D1 ;
 - suivre l'avancement de chaque bien avec un statut et des notes ;
+- suivre les dossiers avec des statuts operationnels, dont `Sous option` et `Vendu` ;
+- preparer un email Gmail pre-rempli et suivre manuellement l'envoi ou les reponses ;
 - comparer plusieurs biens ;
 - exporter les donnees en CSV ;
 - generer et conserver un email de contact pour le vendeur ou l'agence.
@@ -48,8 +51,33 @@ Limite connue : l'URL Immoweb seule peut rester bloquee dans l'environnement Clo
 
 - `email_contact` est maintenant sauvegarde en base.
 - `email_contact` est affiche sur la page detail et peut etre copie.
+- `property_tag` est maintenant sauvegarde en base sous la forme `Ville - Type de bien`, par exemple `Uccle - Maison`.
+- Le prompt Gemini demande explicitement ce tag, et l'API reconstruit un fallback si Gemini fournit `localisation` et `type` mais oublie `property_tag`.
+- Le tag est affiche dans les cartes, la page detail, la comparaison, la recherche et l'export CSV.
+- Une migration D1 a ete ajoutee : `migrations/0001_add_property_tag.sql`.
 - L'export CSV inclut l'email suggere.
+- L'export CSV inclut maintenant aussi le lien source de l'annonce.
+- Le lien source est conserve meme lorsqu'il est colle au milieu du texte d'annonce.
+- La page detail affiche un panneau "Annonce source" pour rouvrir le lien original, notamment Immoweb.
+- Une migration D1 a ete ajoutee : `migrations/0002_add_email_followup_fields.sql`.
+- Les champs de suivi email sont sauvegardes : `contact_status`, `email_sent_at`, `last_contact_at`, `last_reply_at`, `gmail_thread_id`.
 - La route `PUT /api/properties/:id` utilise une whitelist de champs modifiables.
+
+### Suivi Gmail sans OAuth
+
+- La page detail affiche un panneau "Suivi Gmail".
+- Le bouton "Ouvrir dans Gmail" ouvre une composition Gmail pre-remplie avec le destinataire detecte, un sujet et le corps `email_contact`.
+- L'application ne se connecte pas encore a Gmail et ne lit pas la boite mail.
+- L'utilisateur marque manuellement les etapes : email envoye, reponse recue, relance a faire, relance envoyee ou clos sans reponse.
+- Le dashboard affiche un compteur `Reponses recues / Emails envoyes` et une repartition "Suivi contact".
+- Cette architecture garde une piste claire pour ajouter plus tard OAuth Gmail via `gmail_thread_id`, sans demander tout de suite des scopes Gmail sensibles ou restreints.
+
+### Suivi analytique
+
+- Les statuts de suivi incluent maintenant : `Nouveau`, `A contacter`, `Contacte`, `A relancer`, `Visite planifiee`, `Visite faite`, `Offre faite`, `Dossier envoye`, `Sous option`, `Vendu`, `Archive`.
+- Gemini peut suggerer automatiquement `sous_option` ou `vendu` si l'annonce indique explicitement que le bien est sous option ou vendu.
+- Le dashboard ajoute une lecture "Zones les plus demandees" basee sur les biens marques `Sous option` ou `Vendu`.
+- Cette lecture agrège les signaux par zone, compte les appartements concernes, et distingue les biens sous option des biens vendus.
 
 ### Parametres Gemini
 
@@ -100,6 +128,12 @@ Validation effectuee :
 - build Vite avec `npm run build` ;
 - test API local `/api/settings` sans exposition de `gemini_key` ;
 - test API local `/api/properties` ;
+- test API local `/api/extract` avec annonce fictive : `Namur - Appartement` genere dans `property_tag` ;
+- test API local `/api/extract` avec annonce fictive sous option : `status_suggestion` vaut `sous_option` ;
+- test API local `/api/extract` avec annonce fictive vendue : `status_suggestion` vaut `vendu` ;
+- test navigateur local de la liste des statuts, du panneau "Annonce source" et de la section analytique "Zones les plus demandees" ;
+- test API local `PUT /api/properties/:id` pour les champs de suivi email, puis remise a zero des valeurs de test ;
+- test navigateur local du panneau "Suivi Gmail", sans ouvrir Gmail afin d'eviter de transmettre un brouillon vers Google pendant le test ;
 - verification navigateur locale sur `http://localhost:8790` : dashboard, liste, detail, comparaison, parametres et 404.
 
 ## Verdict sur la completude
@@ -110,10 +144,14 @@ Elle peut :
 
 - stocker des biens ;
 - afficher des statistiques ;
+- identifier les zones ou des biens similaires passent en sous option ou vendu ;
 - comparer des biens avec une logique metier plus correcte ;
 - appeler Gemini si la cle est configuree cote Cloudflare ;
 - refuser un import URL inaccessible au lieu de creer une fiche hallucinee ;
 - conserver l'email de contact genere ;
+- preparer un brouillon Gmail et suivre manuellement les demandes de contact ;
+- conserver et afficher un tag ville/type genere par Gemini ;
+- conserver le lien source de l'annonce pour suivre le bien sur le portail d'origine ;
 - fonctionner correctement sur mobile et desktop ;
 - exporter les donnees importantes en CSV.
 

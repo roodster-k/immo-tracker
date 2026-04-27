@@ -3,12 +3,13 @@ import React, { useEffect, useState } from 'react'
 import { getProperties } from '../lib/api.js'
 import PropertyCard from '../components/PropertyCard.jsx'
 import { Card, Empty, Spinner, ScoreBar } from '../components/ui.jsx'
-import { formatPrice } from '../lib/utils.js'
+import { formatPrice, STATUS_LABELS, getPropertyTag } from '../lib/utils.js'
 import { ArrowDown, Check, Home } from 'lucide-react'
 
 const MAX = 3
 
 const COMPARE_FIELDS = [
+  { key: 'property_tag', label: 'Tag', fn: p => getPropertyTag(p) || '—', mode: 'neutral' },
   { key: 'price', label: 'Prix', fn: p => p.price_raw || formatPrice(p.price), mode: 'lower' },
   { key: 'surface_hab', label: 'Surface hab.', fn: p => p.surface_hab ? `${p.surface_hab} m²` : '—', mode: 'higher' },
   { key: 'surface_terrain', label: 'Terrain', fn: p => p.surface_terrain ? `${p.surface_terrain} m²` : '—', mode: 'higher' },
@@ -18,6 +19,7 @@ const COMPARE_FIELDS = [
   { key: 'localisation', label: 'Localisation', fn: p => p.localisation || '—', mode: 'neutral' },
   { key: 'source', label: 'Source', fn: p => p.source || '—', mode: 'neutral' },
   { key: 'contact_type', label: 'Contact', fn: p => p.contact_type || '—', mode: 'neutral' },
+  { key: 'status', label: 'Suivi', fn: p => STATUS_LABELS[p.status] || p.status || '—', mode: 'neutral' },
   { key: 'score', label: 'Score', fn: p => `${p.score || 0}/100`, mode: 'higher' },
 ]
 
@@ -87,7 +89,7 @@ export default function Compare() {
           </div>
 
           {/* Score banner */}
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${selected.length}, 1fr)`, gap: 12, marginBottom: 16 }}>
+          <div className="compare-score-grid" style={{ gridTemplateColumns: `repeat(${selected.length}, 1fr)` }}>
             {selected.map(p => (
               <Card key={p.id} style={{ textAlign: 'center', background: p.score >= 70 ? 'var(--green-l)' : p.score >= 45 ? 'var(--gold-bg)' : 'var(--red-l)' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, marginBottom: 4, color: 'var(--ink-2)' }}>

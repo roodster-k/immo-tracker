@@ -4,11 +4,11 @@ import { NavLink } from 'react-router-dom'
 import { LayoutDashboard, PlusCircle, List, GitCompare, Settings } from 'lucide-react'
 
 const nav = [
-  { to: '/',        icon: LayoutDashboard, label: 'Tableau de bord' },
-  { to: '/add',     icon: PlusCircle,      label: 'Ajouter un bien' },
-  { to: '/biens',   icon: List,            label: 'Mes biens' },
-  { to: '/comparer',icon: GitCompare,      label: 'Comparer' },
-  { to: '/settings',icon: Settings,        label: 'Paramètres' },
+  { to: '/',         icon: LayoutDashboard, label: 'Tableau de bord', short: 'Accueil' },
+  { to: '/add',      icon: PlusCircle,      label: 'Ajouter un bien', short: 'Ajouter' },
+  { to: '/biens',    icon: List,            label: 'Mes biens',       short: 'Biens' },
+  { to: '/comparer', icon: GitCompare,      label: 'Comparer',        short: 'Comparer' },
+  { to: '/settings', icon: Settings,        label: 'Paramètres',      short: 'Réglages' },
 ]
 
 export default function Sidebar() {
@@ -22,7 +22,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="sidebar-nav">
-        {nav.map(({ to, icon: Icon, label }) => (
+        {nav.map(({ to, icon: Icon, label, short }) => (
           <NavLink
             key={to}
             to={to}
@@ -33,6 +33,7 @@ export default function Sidebar() {
               <>
                 <Icon size={17} strokeWidth={isActive ? 2.2 : 1.8} aria-hidden="true" />
                 <span className="nav-link-label">{label}</span>
+                <span className="nav-link-short" aria-hidden="true">{short}</span>
               </>
             )}
           </NavLink>

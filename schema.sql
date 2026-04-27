@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS properties (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   title TEXT,
   type TEXT,
+  property_tag TEXT,
   price INTEGER,
   price_raw TEXT,
   surface_hab INTEGER,
@@ -25,8 +26,13 @@ CREATE TABLE IF NOT EXISTS properties (
   description TEXT,
   score INTEGER,
   score_raison TEXT,
-  status TEXT DEFAULT 'nouveau',  -- nouveau | visite_planifiee | visite_faite | offre | archive
+  status TEXT DEFAULT 'nouveau',  -- nouveau | a_contacter | contacte | a_relancer | visite_planifiee | visite_faite | offre | dossier_envoye | sous_option | vendu | archive
   notes TEXT,
+  contact_status TEXT DEFAULT 'pas_contacte',
+  email_sent_at TEXT,
+  last_contact_at TEXT,
+  last_reply_at TEXT,
+  gmail_thread_id TEXT,
   raw_annonce TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))

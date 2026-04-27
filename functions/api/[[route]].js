@@ -140,6 +140,63 @@ function normalizeScalar(value) {
   return trimmed
 }
 
+function normalizeTypeLabel(type) {
+  if (!type) return null
+  const value = String(type).trim().toLowerCase()
+  if (!value) return null
+  if (value.includes('appartement') || value.includes('studio')) return 'Appartement'
+  if (value.includes('maison') || value.includes('villa')) return 'Maison'
+  if (value.includes('terrain')) return 'Terrain'
+  if (value.includes('immeuble')) return 'Immeuble'
+  if (value.includes('autre')) return 'Autre'
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+function normalizeCityLabel(localisation) {
+  if (!localisation) return null
+  const city = String(localisation)
+    .split(/[,\n]/)[0]
+    .replace(/\b\d{4}\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return city || null
+}
+
+function normalizePropertyTag(tag) {
+  if (!tag) return null
+  const normalized = String(tag)
+    .replace(/[–—]/g, '-')
+    .replace(/\s*-\s*/g, ' - ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return normalized ? normalized.slice(0, 80) : null
+}
+
+function buildPropertyTag(property) {
+  const geminiTag = normalizePropertyTag(property.property_tag)
+  if (geminiTag) return geminiTag
+
+  const city = normalizeCityLabel(property.localisation)
+  const type = normalizeTypeLabel(property.type)
+  return city && type ? `${city} - ${type}` : null
+}
+
+function normalizeStatusSuggestion(value) {
+  if (!value) return null
+  const normalized = String(value)
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\s-]+/g, '_')
+
+  if (['sous_option', 'option', 'offre_sous_option', 'sous_offre'].includes(normalized)) return 'sous_option'
+  if (['vendu', 'vendue', 'sold'].includes(normalized)) return 'vendu'
+  return null
+}
+
 function normalizeExtracted(extracted) {
   const cleaned = Object.fromEntries(
     Object.entries(extracted).map(([key, value]) => [key, normalizeScalar(value)])
@@ -152,6 +209,8 @@ function normalizeExtracted(extracted) {
     surface_terrain: toInteger(cleaned.surface_terrain),
     nb_chambres: toInteger(cleaned.nb_chambres),
     score: toInteger(cleaned.score),
+    property_tag: buildPropertyTag(cleaned),
+    status_suggestion: normalizeStatusSuggestion(cleaned.status_suggestion),
   }
 }
 
@@ -216,6 +275,8 @@ Règles strictes :
 - N'invente pas d'adresse, de prix, de contact, de PEB, de surface ou de description.
 - Pour "peb", indique une classe A-G seulement si elle est explicitement présente. Sinon conserve la valeur énergétique disponible, par exemple "358 kWh/m²", ou "non précisé".
 - Pour "description", rédige un résumé fidèle de 2 à 4 phrases incluant les pièces/surfaces, l'état, l'énergie et les atouts de localisation quand ces éléments sont présents.
+- Pour "property_tag", génère un libellé court "Ville - Type de bien", par exemple "Uccle - Maison" ou "Antwerpen - Appartement". Utilise la commune/ville principale et le type normalisé ; si une des deux informations manque, retourne null.
+- Pour "status_suggestion", retourne "sous_option" uniquement si l'annonce indique explicitement que le bien est sous option/offre sous option, "vendu" uniquement si elle indique explicitement que le bien est vendu, sinon null.
 - Si le contenu réel de l'annonce est inaccessible, retourne {"error":"CONTENU_ANNONCE_INACCESSIBLE"}.
 
 ANNONCE :
@@ -229,6 +290,7 @@ Format JSON attendu (tous les champs, null si inconnu) :
 {
   "title": string|null,
   "type": "maison"|"appartement"|"terrain"|"immeuble"|"autre"|null,
+  "property_tag": string|null,
   "price": number|null,
   "price_raw": string|null,
   "surface_hab": number|null,
@@ -247,7 +309,8 @@ Format JSON attendu (tous les champs, null si inconnu) :
   "description": string|null,
   "score": number|null,
   "score_raison": string|null,
-  "email_contact": string|null
+  "email_contact": string|null,
+  "status_suggestion": "sous_option"|"vendu"|null
 }`
 
       const geminiPayload = {
@@ -302,25 +365,29 @@ Format JSON attendu (tous les champs, null si inconnu) :
     if (path === '/properties' && method === 'POST') {
       const body = await request.json()
       const {
-        title, type, price, price_raw, surface_hab, surface_terrain,
+        title, type, property_tag, price, price_raw, surface_hab, surface_terrain,
         nb_chambres, localisation, adresse, etat, peb, source, url: propUrl,
         date_publication, contact_nom, contact_type, contact_tel, contact_email,
-        email_contact, description, score, score_raison, notes, raw_annonce
+        email_contact, description, score, score_raison, notes,
+        contact_status = 'pas_contacte', email_sent_at = null, last_contact_at = null,
+        last_reply_at = null, gmail_thread_id = null, raw_annonce
       } = body
 
       const stmt = env.DB.prepare(`
         INSERT INTO properties (
-          title, type, price, price_raw, surface_hab, surface_terrain,
+          title, type, property_tag, price, price_raw, surface_hab, surface_terrain,
           nb_chambres, localisation, adresse, etat, peb, source, url,
           date_publication, contact_nom, contact_type, contact_tel, contact_email,
-          email_contact, description, score, score_raison, notes, raw_annonce
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          email_contact, description, score, score_raison, notes, contact_status,
+          email_sent_at, last_contact_at, last_reply_at, gmail_thread_id, raw_annonce
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `)
       const result = await stmt.bind(
-        title, type, price, price_raw, surface_hab, surface_terrain,
+        title, type, property_tag, price, price_raw, surface_hab, surface_terrain,
         nb_chambres, localisation, adresse, etat, peb, source, propUrl,
         date_publication, contact_nom, contact_type, contact_tel, contact_email,
-        email_contact, description, score, score_raison, notes, raw_annonce
+        email_contact, description, score, score_raison, notes, contact_status,
+        email_sent_at, last_contact_at, last_reply_at, gmail_thread_id, raw_annonce
       ).run()
 
       return json({ ok: true, id: result.meta.last_row_id })
@@ -341,10 +408,12 @@ Format JSON attendu (tous les champs, null si inconnu) :
         const body = await request.json()
         
         const allowedKeys = [
-          'title', 'type', 'price', 'price_raw', 'surface_hab', 'surface_terrain',
+          'title', 'type', 'property_tag', 'price', 'price_raw', 'surface_hab', 'surface_terrain',
           'nb_chambres', 'localisation', 'adresse', 'etat', 'peb', 'source', 'url',
           'date_publication', 'contact_nom', 'contact_type', 'contact_tel', 'contact_email',
-          'email_contact', 'description', 'score', 'score_raison', 'status', 'notes', 'raw_annonce'
+          'email_contact', 'description', 'score', 'score_raison', 'status', 'notes',
+          'contact_status', 'email_sent_at', 'last_contact_at', 'last_reply_at',
+          'gmail_thread_id', 'raw_annonce'
         ];
         
         const filteredKeys = Object.keys(body).filter(k => allowedKeys.includes(k));

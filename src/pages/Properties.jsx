@@ -4,7 +4,7 @@ import { Search, Download } from 'lucide-react'
 import { getProperties } from '../lib/api.js'
 import PropertyCard from '../components/PropertyCard.jsx'
 import { Button, Spinner, Empty } from '../components/ui.jsx'
-import { STATUS_OPTIONS, CSV_HEADERS, csvRow } from '../lib/utils.js'
+import { CONTACT_STATUS_LABELS, STATUS_OPTIONS, CSV_HEADERS, csvRow, getPropertyTag } from '../lib/utils.js'
 
 export default function Properties() {
   const [properties, setProperties] = useState([])
@@ -23,7 +23,15 @@ export default function Properties() {
   const filtered = properties
     .filter(p => {
       const q = search.toLowerCase()
-      if (q && ![p.title, p.localisation, p.type, p.source, p.contact_nom].some(v => v?.toLowerCase().includes(q))) return false
+      if (q && ![
+        p.title,
+        getPropertyTag(p),
+        p.localisation,
+        p.type,
+        p.source,
+        p.contact_nom,
+        CONTACT_STATUS_LABELS[p.contact_status],
+      ].some(v => v?.toLowerCase().includes(q))) return false
       if (statusFilter !== 'all' && p.status !== statusFilter) return false
       return true
     })
@@ -55,13 +63,14 @@ export default function Properties() {
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
+      <div className="filters-bar">
+        <div className="search-wrapper" style={{ position: 'relative', flex: 1, minWidth: 220 }}>
           <Search size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-3)' }} />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Rechercher un bien…"
+            className="ui-input"
             style={{
               width: '100%', paddingLeft: 34, paddingRight: 12, paddingTop: 8, paddingBottom: 8,
               border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
@@ -74,6 +83,7 @@ export default function Properties() {
         <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
+          className="filter-select ui-input"
           style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', background: 'var(--paper)', fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--ink)', outline: 'none' }}
         >
           <option value="all">Tous les statuts</option>
@@ -83,6 +93,7 @@ export default function Properties() {
         <select
           value={sortBy}
           onChange={e => setSortBy(e.target.value)}
+          className="filter-select ui-input"
           style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', background: 'var(--paper)', fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--ink)', outline: 'none' }}
         >
           <option value="date">Plus récents</option>

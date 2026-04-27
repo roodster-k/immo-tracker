@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sparkles, Save, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react'
 import { extractAnnonce, createProperty, getSettings } from '../lib/api.js'
-import { Button, Textarea, Input, Select, Card, Spinner, ScoreBar } from '../components/ui.jsx'
-import { STATUS_OPTIONS } from '../lib/utils.js'
+import { Button, Textarea, Select, Card, Spinner, ScoreBar } from '../components/ui.jsx'
+import { STATUS_LABELS, STATUS_OPTIONS, extractFirstUrl } from '../lib/utils.js'
 
 const SOURCES = ['auto-détecté', 'Immoweb', 'Zimmo', 'Century 21', 'Athome', 'Agence', 'Particulier', 'Autre']
 
@@ -38,6 +38,9 @@ export default function AddProperty() {
         criteria: settings.criteria,
         user_name: settings.user_name,
       })
+      if (res.data?.status_suggestion) {
+        setStatus(res.data.status_suggestion)
+      }
       setExtracted(res.data)
     } catch (e) {
       setError(e.message)
@@ -55,7 +58,7 @@ export default function AddProperty() {
         notes,
         status,
         raw_annonce: annonce,
-        url: annonce.startsWith('http') ? annonce.split('\n')[0] : null,
+        url: extractFirstUrl(annonce),
       }
       const res = await createProperty(payload)
       navigate(`/biens/${res.id}`)
@@ -86,7 +89,7 @@ export default function AddProperty() {
       </div>
 
       <Card style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+        <div className="annonce-bar" style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 240 }}>
             <Textarea
               label="Texte ou URL de l'annonce"
@@ -97,7 +100,7 @@ export default function AddProperty() {
               style={{ minHeight: 130 }}
             />
           </div>
-          <div style={{ width: 160 }}>
+          <div className="source-wrapper" style={{ width: 160 }}>
             <Select label="Source" id="source" value={source} onChange={e => setSource(e.target.value)}>
               {SOURCES.map(s => <option key={s}>{s}</option>)}
             </Select>
@@ -139,6 +142,7 @@ export default function AddProperty() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 16 }}>
               {[
                 ['Type', extracted.type],
+                ['Tag', extracted.property_tag],
                 ['Prix', extracted.price_raw],
                 ['Surface hab.', extracted.surface_hab ? `${extracted.surface_hab} m²` : null],
                 ['Terrain', extracted.surface_terrain ? `${extracted.surface_terrain} m²` : null],
@@ -148,6 +152,7 @@ export default function AddProperty() {
                 ['PEB', extracted.peb],
                 ['Source', extracted.source],
                 ['Date pub.', extracted.date_publication],
+                ['Statut détecté', extracted.status_suggestion ? STATUS_LABELS[extracted.status_suggestion] : null],
               ].map(([label, value]) => value ? (
                 <div key={label}>
                   <div style={{ fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{label}</div>

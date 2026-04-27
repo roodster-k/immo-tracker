@@ -2,17 +2,22 @@
 import React from 'react'
 import { cn, scoreBgClass, STATUS_LABELS } from '../lib/utils.js'
 
-export function Badge({ children, className, variant = 'default' }) {
-  const base = 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium'
-  const variants = {
-    default: 'bg-paper-2 text-ink-2',
-    gold: 'bg-gold-bg text-amber',
-    green: 'bg-green-l text-green',
-    blue: 'bg-blue-l text-blue',
-    red: 'bg-red-l text-red',
-  }
+export function Badge({ children, className, variant = 'default', style: styleProp }) {
   return (
-    <span className={cn(base, variants[variant], className)} style={getVariantStyle(variant)}>
+    <span
+      className={className}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: '2px 10px',
+        borderRadius: 999,
+        fontSize: 12,
+        fontWeight: 500,
+        ...getVariantStyle(variant),
+        ...styleProp,
+      }}
+    >
       {children}
     </span>
   )
@@ -32,7 +37,19 @@ function getVariantStyle(variant) {
 export function ScorePill({ score }) {
   const cls = scoreBgClass(score)
   return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${cls}`}>
+    <span
+      className={cls}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: '2px 10px',
+        borderRadius: 999,
+        fontSize: 12,
+        fontWeight: 600,
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
+      }}
+    >
       {score}/100
     </span>
   )
@@ -40,29 +57,56 @@ export function ScorePill({ score }) {
 
 export function StatusBadge({ status }) {
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium status-${status}`}>
+    <span
+      className={`status-${status}`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: '3px 10px',
+        borderRadius: 999,
+        fontSize: 12,
+        fontWeight: 500,
+        whiteSpace: 'nowrap',
+      }}
+    >
       {STATUS_LABELS[status] || status}
     </span>
   )
 }
 
-export function Button({ children, onClick, variant = 'primary', size = 'md', disabled, className, type = 'button' }) {
-  const base = 'ui-button inline-flex items-center gap-2 font-medium rounded-lg transition-all cursor-pointer border disabled:opacity-40 disabled:cursor-not-allowed'
-  const sizes = { sm: 'px-3 py-1.5 text-sm', md: 'px-4 py-2 text-sm', lg: 'px-5 py-2.5 text-base' }
-  const variants = {
-    primary: { background: 'var(--ink)', color: 'var(--paper)', borderColor: 'var(--ink)' },
-    secondary: { background: 'var(--paper)', color: 'var(--ink)', borderColor: 'var(--border)' },
-    ghost: { background: 'transparent', color: 'var(--ink-2)', borderColor: 'transparent' },
-    danger: { background: 'var(--red-l)', color: 'var(--red)', borderColor: 'transparent' },
-    gold: { background: 'var(--gold)', color: 'var(--paper)', borderColor: 'var(--gold)' },
+export function Button({ children, onClick, variant = 'primary', size = 'md', disabled, className, type = 'button', style: styleProp }) {
+  const sizeStyles = {
+    sm: { padding: '6px 12px', fontSize: 13 },
+    md: { padding: '8px 16px', fontSize: 14 },
+    lg: { padding: '10px 20px', fontSize: 15 },
+  }
+  const variantStyles = {
+    primary:   { background: 'var(--ink)',    color: 'var(--paper)', border: '1px solid var(--ink)' },
+    secondary: { background: 'var(--paper)',  color: 'var(--ink)',   border: '1px solid var(--border)' },
+    ghost:     { background: 'transparent',   color: 'var(--ink-2)', border: '1px solid transparent' },
+    danger:    { background: 'var(--red-l)',  color: 'var(--red)',   border: '1px solid transparent' },
+    gold:      { background: 'var(--gold)',   color: 'var(--paper)', border: '1px solid var(--gold)' },
   }
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={cn(base, sizes[size], className)}
-      style={variants[variant]}
+      className={cn('ui-button', className)}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        fontWeight: 500,
+        borderRadius: 8,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.4 : 1,
+        fontFamily: 'var(--font-body)',
+        lineHeight: 1.2,
+        ...variantStyles[variant],
+        ...sizeStyles[size],
+        ...styleProp,
+      }}
     >
       {children}
     </button>

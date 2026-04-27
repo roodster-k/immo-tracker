@@ -1,13 +1,14 @@
 // src/components/PropertyCard.jsx
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bed, Ruler, MapPin, Calendar } from 'lucide-react'
+import { Bed, Ruler, MapPin, Calendar, Tag } from 'lucide-react'
 import { ScorePill, StatusBadge, Card } from './ui.jsx'
-import { formatPrice, formatDate } from '../lib/utils.js'
+import { formatPrice, formatDate, getPropertyTag } from '../lib/utils.js'
 
 export default function PropertyCard({ property, onSelect, selected }) {
   const navigate = useNavigate()
   const p = property
+  const propertyTag = getPropertyTag(p)
   const open = () => onSelect ? onSelect(p) : navigate(`/biens/${p.id}`)
 
   return (
@@ -33,9 +34,14 @@ export default function PropertyCard({ property, onSelect, selected }) {
       {/* Top row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
         <div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--ink)', lineHeight: 1.3, marginBottom: 4 }}>
+          <div className="line-clamp-2" style={{ fontFamily: 'var(--font-display)', fontSize: 15, color: 'var(--ink)', lineHeight: 1.35, marginBottom: 4 }}>
             {p.title || `${p.type || 'Bien'} — ${p.localisation || '?'}`}
           </div>
+          {propertyTag && (
+            <div className="property-tag" style={{ marginBottom: 6 }}>
+              <Tag size={11} /> {propertyTag}
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--ink-3)', fontSize: 13 }}>
             <MapPin size={12} />
             {p.localisation || '—'}
@@ -62,7 +68,7 @@ export default function PropertyCard({ property, onSelect, selected }) {
           </span>
         )}
         {p.peb && p.peb !== 'non précisé' && (
-          <span style={{ fontWeight: 600, fontSize: 12, padding: '1px 7px', background: pebColor(p.peb), borderRadius: 4, color: '#fff' }}>
+          <span style={{ fontWeight: 600, fontSize: 12, padding: '1px 7px', background: pebColor(p.peb), borderRadius: 4, color: pebTextColor(p.peb) }}>
             PEB {p.peb}
           </span>
         )}
@@ -90,4 +96,9 @@ export default function PropertyCard({ property, onSelect, selected }) {
 function pebColor(peb) {
   const map = { A: '#00733E', B: '#47A832', C: '#B0CB1F', D: '#F5E100', E: '#F5A500', F: '#E8490F', G: '#C01027' }
   return map[peb] || '#888'
+}
+
+function pebTextColor(peb) {
+  // Light backgrounds (C, D) need dark text for WCAG contrast
+  return ['C', 'D'].includes(peb) ? '#101114' : '#ffffff'
 }
