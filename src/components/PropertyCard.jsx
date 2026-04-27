@@ -44,7 +44,7 @@ export default function PropertyCard({ property, onSelect, selected }) {
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--ink-3)', fontSize: 13 }}>
             <MapPin size={12} />
-            {p.localisation || '—'}
+            {p.adresse || p.localisation || '—'}
           </div>
         </div>
         <ScorePill score={p.score || 0} />

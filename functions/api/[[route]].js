@@ -23,6 +23,19 @@ function isHttpUrl(value) {
   }
 }
 
+function hostnameForUrl(value) {
+  try {
+    return new URL(value.trim()).hostname.toLowerCase()
+  } catch {
+    return ''
+  }
+}
+
+function isImmowebUrl(value) {
+  const hostname = hostnameForUrl(value)
+  return hostname === 'immoweb.be' || hostname.endsWith('.immoweb.be')
+}
+
 function stripHtml(html) {
   return html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
@@ -251,6 +264,10 @@ export async function onRequest(context) {
       let fetchFailureReason = ''
 
       if (isUrlAnnonce) {
+        if (isImmowebUrl(originalAnnonce)) {
+          return json({ error: "Immoweb ne permet pas une lecture fiable depuis une URL seule. Colle le texte complet de l'annonce pour éviter une extraction inventée." }, 422)
+        }
+
         const fetched = await fetchUrlText(originalAnnonce)
 
         if (fetched.ok) {
@@ -273,6 +290,8 @@ Règles strictes :
 - Si l'annonce est une URL, utilise l'outil URL Context pour lire cette URL avant de répondre.
 - Ne recopie jamais les exemples ou valeurs du format attendu comme s'il s'agissait de données.
 - N'invente pas d'adresse, de prix, de contact, de PEB, de surface ou de description.
+- Pour "adresse", extrais uniquement l'adresse postale exacte si elle est présente dans l'annonce. Ne mets pas seulement la commune dans ce champ.
+- Pour "localisation", indique la commune, ville ou zone principale, sans recopier l'adresse complète.
 - Pour "peb", indique une classe A-G seulement si elle est explicitement présente. Sinon conserve la valeur énergétique disponible, par exemple "358 kWh/m²", ou "non précisé".
 - Pour "description", rédige un résumé fidèle de 2 à 4 phrases incluant les pièces/surfaces, l'état, l'énergie et les atouts de localisation quand ces éléments sont présents.
 - Pour "property_tag", génère un libellé court "Ville - Type de bien", par exemple "Uccle - Maison" ou "Antwerpen - Appartement". Utilise la commune/ville principale et le type normalisé ; si une des deux informations manque, retourne null.

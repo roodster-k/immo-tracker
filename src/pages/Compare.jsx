@@ -17,6 +17,7 @@ const COMPARE_FIELDS = [
   { key: 'peb', label: 'PEB', fn: p => p.peb || '—', mode: 'neutral' },
   { key: 'etat', label: 'État', fn: p => p.etat || '—', mode: 'neutral' },
   { key: 'localisation', label: 'Localisation', fn: p => p.localisation || '—', mode: 'neutral' },
+  { key: 'adresse', label: 'Adresse', fn: p => p.adresse || '—', mode: 'neutral' },
   { key: 'source', label: 'Source', fn: p => p.source || '—', mode: 'neutral' },
   { key: 'contact_type', label: 'Contact', fn: p => p.contact_type || '—', mode: 'neutral' },
   { key: 'status', label: 'Suivi', fn: p => STATUS_LABELS[p.status] || p.status || '—', mode: 'neutral' },

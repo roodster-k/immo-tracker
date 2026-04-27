@@ -27,6 +27,7 @@ export default function Properties() {
         p.title,
         getPropertyTag(p),
         p.localisation,
+        p.adresse,
         p.type,
         p.source,
         p.contact_nom,

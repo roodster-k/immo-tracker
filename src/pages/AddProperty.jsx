@@ -148,6 +148,7 @@ export default function AddProperty() {
                 ['Terrain', extracted.surface_terrain ? `${extracted.surface_terrain} m²` : null],
                 ['Chambres', extracted.nb_chambres],
                 ['Localisation', extracted.localisation],
+                ['Adresse', extracted.adresse],
                 ['État', extracted.etat],
                 ['PEB', extracted.peb],
                 ['Source', extracted.source],

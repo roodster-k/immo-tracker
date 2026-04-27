@@ -118,7 +118,7 @@ export function csvRow(p) {
   const cols = [
     p.title, p.type, tag, p.price_raw, p.surface_hab ? p.surface_hab+'m²' : '',
     p.surface_terrain ? p.surface_terrain+'m²' : '', p.nb_chambres,
-    p.localisation, p.etat, p.peb, p.source, p.date_publication,
+    p.localisation, p.adresse, p.etat, p.peb, p.source, p.date_publication,
     p.url,
     p.contact_nom, p.contact_type, p.contact_tel, p.contact_email,
     p.email_contact, p.score, STATUS_LABELS[p.status] || p.status,
@@ -130,7 +130,7 @@ export function csvRow(p) {
 
 export const CSV_HEADERS = [
   'Titre','Type','Tag','Prix','Surface hab.','Terrain','Chambres','Localisation',
-  'État','PEB','Source','Date pub.','Lien annonce','Contact','Type contact','Tél','Email',
+  'Adresse','État','PEB','Source','Date pub.','Lien annonce','Contact','Type contact','Tél','Email',
   'Email suggéré',
   'Score','Statut','Suivi contact','Email envoyé le','Dernier contact','Dernière réponse','Thread Gmail','Notes'
 ].map(v => `"${v}"`).join(',')
