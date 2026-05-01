@@ -45,16 +45,21 @@ L'application dispose d'une base fonctionnelle :
 - Normalisation des champs numeriques (`price`, surfaces, chambres, score).
 - Normalisation des valeurs `"null"`, `"n/a"` et chaines vides en vrais `null`.
 
-Limite connue : l'URL Immoweb seule peut rester bloquee dans l'environnement Cloudflare Worker. Dans ce cas, l'application refuse l'import au lieu de creer une fausse fiche. Le chemin fiable consiste a coller le texte visible de l'annonce.
+Limite connue : le fetch serveur direct d'Immoweb est bloque par DataDome/anti-bot. L'application laisse maintenant Gemini URL Context tenter la lecture de l'URL Immoweb ; si URL Context echoue aussi, elle refuse l'import au lieu de creer une fausse fiche. Le chemin fiable de dernier recours consiste a coller le texte visible de l'annonce.
 
 ### Persistance des donnees
 
 - `email_contact` est maintenant sauvegarde en base.
 - `email_contact` est affiche sur la page detail et peut etre copie.
 - `property_tag` est maintenant sauvegarde en base sous la forme `Ville - Type de bien`, par exemple `Uccle - Maison`.
+- La creation d'un bien transforme les champs absents en `null` avant insertion D1 pour eviter les erreurs `undefined`.
+- Le statut choisi ou suggere est sauvegarde des la creation du bien.
+- Les biens peuvent maintenant etre marques en favori (`favorite`) pour les distinguer dans la liste et la fiche detail.
 - Le prompt Gemini demande explicitement ce tag, et l'API reconstruit un fallback si Gemini fournit `localisation` et `type` mais oublie `property_tag`.
 - Le tag est affiche dans les cartes, la page detail, la comparaison, la recherche et l'export CSV.
 - Une migration D1 a ete ajoutee : `migrations/0001_add_property_tag.sql`.
+- Une migration D1 a ete ajoutee : `migrations/0003_add_email_contact.sql` pour les bases deployees avant la sauvegarde de l'email suggere.
+- Une migration D1 a ete ajoutee : `migrations/0004_add_favorite.sql`.
 - L'export CSV inclut l'email suggere.
 - L'export CSV inclut maintenant aussi le lien source de l'annonce.
 - Le lien source est conserve meme lorsqu'il est colle au milieu du texte d'annonce.
@@ -78,6 +83,7 @@ Limite connue : l'URL Immoweb seule peut rester bloquee dans l'environnement Clo
 - Gemini peut suggerer automatiquement `sous_option` ou `vendu` si l'annonce indique explicitement que le bien est sous option ou vendu.
 - Le dashboard ajoute une lecture "Zones les plus demandees" basee sur les biens marques `Sous option` ou `Vendu`.
 - Cette lecture agrège les signaux par zone, compte les appartements concernes, et distingue les biens sous option des biens vendus.
+- Le dashboard ajoute une compilation dediee "Appartements deja pris" : appartements/studios sous option ou vendus regroupes par zone, avec compteurs, prix moyen, fourchette de prix, surface moyenne et acces rapide aux fiches.
 
 ### Parametres Gemini
 
@@ -85,6 +91,16 @@ Limite connue : l'URL Immoweb seule peut rester bloquee dans l'environnement Clo
 - `/api/settings` ne renvoie plus `gemini_key`.
 - `/api/settings` expose uniquement un statut `gemini_configured`.
 - La cle Gemini doit rester configuree comme secret Cloudflare via `GEMINI_KEY`.
+- `/api/extract` relit maintenant les criteres et le nom depuis D1 si le client ne les transmet pas, afin d'eviter les analyses sans prompt personnalise.
+- Le prompt d'extraction force un `score` 0-100 et une `score_raison` quand des criteres acheteur sont renseignes.
+- Les parametres proposent une action "Recalculer tous les scores" qui relance Gemini sur les biens existants avec les criteres actuels, sans devoir reimporter les annonces.
+
+### Authentification Supabase
+
+- Ajout d'une page de connexion/creation de compte via Supabase Auth email/password.
+- Le frontend stocke la session Supabase dans le navigateur et envoie le token Bearer aux routes `/api/*`.
+- Les Pages Functions verifient le token via Supabase `/auth/v1/user` quand `SUPABASE_URL` et `SUPABASE_ANON_KEY` sont configurees.
+- Si les variables Supabase ne sont pas configurees, l'authentification reste desactivee pour le developpement local.
 
 Commande de reference :
 
@@ -155,27 +171,67 @@ Elle peut :
 - fonctionner correctement sur mobile et desktop ;
 - exporter les donnees importantes en CSV.
 
-Elle n'est pas encore prete pour un usage public sans protection d'acces ni durcissement supplementaire.
+Elle n'est pas encore prete pour un usage public sans configurer l'authentification Supabase, appliquer les migrations restantes et redeployer.
+
+## Actions utilisateur restantes
+
+### 1. Criteres de recherche
+
+- Donner ou coller les criteres de recherche a enregistrer dans les parametres.
+- Si tu testes en local, enregistrer ces criteres dans `http://localhost:8790/settings`.
+- Si tu veux les utiliser sur le site en ligne, les enregistrer aussi en production.
+- Apres modification des criteres, utiliser le bouton `Recalculer tous les scores` dans les parametres pour rescoring des biens deja importes.
+
+### 2. Supabase Auth
+
+- Creer un projet Supabase.
+- Activer l'authentification Email / Password.
+- Recuperer `Project URL` et la cle publique `anon` / `publishable`.
+- Ajouter en local dans `.dev.vars` :
+
+```bash
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_ANON_KEY=...
+```
+
+- Ajouter les memes valeurs cote Cloudflare Pages :
+
+```bash
+npx wrangler pages secret put SUPABASE_URL --project-name=immo-tracker
+npx wrangler pages secret put SUPABASE_ANON_KEY --project-name=immo-tracker
+```
+
+- Ne pas partager ni committer de mot de passe, service role key, ou secret Supabase prive.
+
+### 3. Migration et deploiement
+
+- Appliquer la migration D1 de favoris en production :
+
+```bash
+npx wrangler d1 migrations apply immo-tracker-db --remote
+```
+
+- Lancer le build :
+
+```bash
+npm run build
+```
+
+- Redeployer Cloudflare Pages :
+
+```bash
+npx wrangler pages deploy dist --project-name=immo-tracker
+```
 
 ## Manques restants
 
-### 1. Absence d'authentification
+### 1. Authentification a configurer
 
-L'application n'a pas encore de login.
+Le code de login Supabase est en place, mais il faut encore configurer les variables Supabase et redeployer.
 
-Si elle est deployee publiquement sur Cloudflare Pages, toute personne connaissant l'URL peut potentiellement appeler les routes API :
+Tant que `SUPABASE_URL` et `SUPABASE_ANON_KEY` ne sont pas configurees, l'application reste ouverte afin de faciliter le developpement local.
 
-- lire les biens ;
-- ajouter des biens ;
-- modifier des biens ;
-- supprimer des biens ;
-- lire les parametres non sensibles.
-
-Solution recommandee :
-
-- activer Cloudflare Access devant l'application ;
-- limiter l'acces a ton email ;
-- plus tard, si besoin, ajouter une vraie authentification applicative.
+Apres configuration Supabase, les routes API refuseront les appels sans token valide.
 
 ### 2. Validation serveur encore incomplete
 

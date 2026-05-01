@@ -23,6 +23,18 @@ function isHttpUrl(value) {
   }
 }
 
+function normalizeUrlInput(value) {
+  const trimmed = (value || '').trim()
+  if (!trimmed || /\s/.test(trimmed)) return null
+  if (isHttpUrl(trimmed)) return trimmed
+
+  if (/^(?:www\.)?[\w-]+(?:\.[\w-]+)+(?:[/:?#].*)?$/i.test(trimmed)) {
+    return `https://${trimmed}`
+  }
+
+  return null
+}
+
 function hostnameForUrl(value) {
   try {
     return new URL(value.trim()).hostname.toLowerCase()
@@ -34,11 +46,6 @@ function hostnameForUrl(value) {
 function isImmowebUrl(value) {
   const hostname = hostnameForUrl(value)
   return hostname === 'immoweb.be' || hostname.endsWith('.immoweb.be')
-}
-
-// Détecte immoweb.be dans toute forme : https://, http://, www., ou domaine nu
-function isImmowebInput(value) {
-  return /^(?:https?:\/\/)?(?:www\.)?immoweb\.be\//i.test(value.trim())
 }
 
 function stripHtml(html) {
@@ -120,6 +127,37 @@ function hasUrlContextSuccess(data) {
   return urlContextStatuses(data).some(status => status === 'URL_RETRIEVAL_STATUS_SUCCESS')
 }
 
+function supabaseAuthConfig(env) {
+  const supabaseUrl = (env.SUPABASE_URL || '').replace(/\/+$/, '')
+  const supabaseAnonKey = env.SUPABASE_ANON_KEY || env.SUPABASE_PUBLISHABLE_KEY || ''
+  return {
+    enabled: Boolean(supabaseUrl && supabaseAnonKey),
+    supabaseUrl,
+    supabaseAnonKey,
+  }
+}
+
+async function verifySupabaseUser(request, env) {
+  const config = supabaseAuthConfig(env)
+  if (!config.enabled) return { ok: true, user: null }
+
+  const authorization = request.headers.get('Authorization') || ''
+  if (!authorization.startsWith('Bearer ')) {
+    return { ok: false, status: 401, error: 'Connexion requise' }
+  }
+
+  const res = await fetch(`${config.supabaseUrl}/auth/v1/user`, {
+    headers: {
+      apikey: config.supabaseAnonKey,
+      Authorization: authorization,
+    },
+  })
+
+  if (!res.ok) return { ok: false, status: 401, error: 'Session invalide ou expirée' }
+
+  return { ok: true, user: await res.json() }
+}
+
 function parseGeminiJson(text) {
   const cleaned = text.replace(/```json|```/g, '').trim()
   // Toujours extraire l'objet JSON via regex — évite les erreurs si Gemini
@@ -155,6 +193,19 @@ function normalizeScalar(value) {
   const trimmed = value.trim()
   if (!trimmed || /^(null|n\/a|na|undefined)$/i.test(trimmed)) return null
   return trimmed
+}
+
+function dbValue(value) {
+  return value === undefined ? null : value
+}
+
+function normalizeFavorite(value) {
+  return value === true || value === 1 || value === '1' || value === 'true' ? 1 : 0
+}
+
+async function readSettings(db) {
+  const { results } = await db.prepare('SELECT key, value FROM settings').all()
+  return Object.fromEntries(results.map(row => [row.key, row.value]))
 }
 
 function normalizeTypeLabel(type) {
@@ -214,6 +265,24 @@ function normalizeStatusSuggestion(value) {
   return null
 }
 
+function buildScoreContext(property) {
+  return {
+    title: property.title,
+    type: property.type,
+    price: property.price,
+    price_raw: property.price_raw,
+    surface_hab: property.surface_hab,
+    surface_terrain: property.surface_terrain,
+    nb_chambres: property.nb_chambres,
+    localisation: property.localisation,
+    adresse: property.adresse,
+    etat: property.etat,
+    peb: property.peb,
+    source: property.source,
+    description: property.description,
+  }
+}
+
 function normalizeExtracted(extracted) {
   const cleaned = Object.fromEntries(
     Object.entries(extracted).map(([key, value]) => [key, normalizeScalar(value)])
@@ -254,6 +323,22 @@ export async function onRequest(context) {
     })
 
   try {
+    // ── GET /api/auth/config ─────────────────────────────────────────────
+    if (path === '/auth/config' && method === 'GET') {
+      const config = supabaseAuthConfig(env)
+      return json({
+        ok: true,
+        data: {
+          auth_enabled: config.enabled,
+          supabase_url: config.enabled ? config.supabaseUrl : '',
+          supabase_anon_key: config.enabled ? config.supabaseAnonKey : '',
+        },
+      })
+    }
+
+    const auth = await verifySupabaseUser(request, env)
+    if (!auth.ok) return json({ error: auth.error }, auth.status)
+
     // ── POST /api/extract ─────────────────────────────────────────────────
     if (path === '/extract' && method === 'POST') {
       const body = await request.json()
@@ -262,21 +347,25 @@ export async function onRequest(context) {
 
       if (!geminiKey) return json({ error: 'GEMINI_KEY non configurée' }, 500)
 
+      if (!String(criteria || '').trim() || !String(user_name || '').trim()) {
+        const savedSettings = await readSettings(env.DB)
+        criteria = String(criteria || '').trim() || savedSettings.criteria || ''
+        user_name = String(user_name || '').trim() || savedSettings.user_name || ''
+      }
+
       const originalAnnonce = (annonce || '').trim()
-      const isUrlAnnonce = isHttpUrl(originalAnnonce)
+      const urlAnnonce = normalizeUrlInput(originalAnnonce)
+      const isUrlAnnonce = Boolean(urlAnnonce)
       let useUrlContext = false
       let fetchFailureReason = ''
 
-      if (isImmowebInput(originalAnnonce)) {
-        return json({ error: "Immoweb ne permet pas une lecture fiable depuis une URL seule. Colle le texte complet de l'annonce pour éviter une extraction inventée." }, 422)
-      }
-
       if (isUrlAnnonce) {
-
-        const fetched = await fetchUrlText(originalAnnonce)
+        const fetched = isImmowebUrl(urlAnnonce)
+          ? { ok: false, reason: 'Immoweb bloque le fetch serveur direct, essai via Gemini URL Context' }
+          : await fetchUrlText(urlAnnonce)
 
         if (fetched.ok) {
-          annonce = `URL source : ${originalAnnonce}
+          annonce = `URL source : ${urlAnnonce}
 URL finale : ${fetched.finalUrl}
 
 CONTENU TEXTE DE L'ANNONCE :
@@ -284,7 +373,7 @@ ${fetched.text}`
         } else {
           fetchFailureReason = fetched.reason
           useUrlContext = true
-          annonce = originalAnnonce
+          annonce = urlAnnonce
         }
       }
 
@@ -300,7 +389,12 @@ Règles strictes :
 - Pour "peb", indique une classe A-G seulement si elle est explicitement présente. Sinon conserve la valeur énergétique disponible, par exemple "358 kWh/m²", ou "non précisé".
 - Pour "description", rédige un résumé fidèle de 2 à 4 phrases incluant les pièces/surfaces, l'état, l'énergie et les atouts de localisation quand ces éléments sont présents.
 - Pour "property_tag", génère un libellé court "Ville - Type de bien", par exemple "Uccle - Maison" ou "Antwerpen - Appartement". Utilise la commune/ville principale et le type normalisé ; si une des deux informations manque, retourne null.
+- Si CRITÈRES ACHETEUR est renseigné, "score" est obligatoire et doit être un nombre entier de 0 à 100.
+- Calcule "score" en comparant le bien aux CRITÈRES ACHETEUR : budget, zone, type, surface, chambres, PEB, état, travaux, rendement ou autres priorités présentes.
+- Pour "score_raison", donne une justification concrète en 1 à 2 phrases : points forts, écarts aux critères, et incertitudes si des données manquent.
+- Si CRITÈRES ACHETEUR est "non renseignés", retourne score null et score_raison null.
 - Pour "status_suggestion", retourne "sous_option" uniquement si l'annonce indique explicitement que le bien est sous option/offre sous option, "vendu" uniquement si elle indique explicitement que le bien est vendu, sinon null.
+- Le nom signataire ci-dessous sert uniquement à rédiger "email_contact". Ne l'utilise jamais comme "contact_nom" de l'annonce.
 - Si le contenu réel de l'annonce est inaccessible, retourne {"error":"CONTENU_ANNONCE_INACCESSIBLE"}.
 
 ANNONCE :
@@ -308,7 +402,7 @@ ${annonce}
 
 SOURCE : ${source || 'non précisée'}
 CRITÈRES ACHETEUR : ${criteria || 'non renseignés'}
-NOM SIGNATAIRE : ${user_name || 'moi'}
+NOM SIGNATAIRE POUR L'EMAIL : ${user_name || 'non renseigné'}
 
 Format JSON attendu (tous les champs, null si inconnu) :
 {
@@ -358,7 +452,12 @@ Format JSON attendu (tous les champs, null si inconnu) :
       if (geminiData.error) return json({ error: geminiData.error.message }, 500)
 
       const text = geminiText(geminiData)
-      if (!text) return json({ error: 'Réponse Gemini vide ou bloquée' }, 502)
+      if (!text) {
+        const detail = useUrlContext
+          ? ` (fetch: ${fetchFailureReason || 'échec'}; URL Context: ${urlContextStatuses(geminiData).join(', ') || 'aucun accès'})`
+          : ''
+        return json({ error: `Réponse Gemini vide ou bloquée${detail}` }, 502)
+      }
 
       const extracted = normalizeExtracted(parseGeminiJson(text))
 
@@ -395,7 +494,7 @@ Format JSON attendu (tous les champs, null si inconnu) :
         title, type, property_tag, price, price_raw, surface_hab, surface_terrain,
         nb_chambres, localisation, adresse, etat, peb, source, url: propUrl,
         date_publication, contact_nom, contact_type, contact_tel, contact_email,
-        email_contact, description, score, score_raison, notes,
+        email_contact, description, score, score_raison, favorite = 0, status = 'nouveau', notes,
         contact_status = 'pas_contacte', email_sent_at = null, last_contact_at = null,
         last_reply_at = null, gmail_thread_id = null, raw_annonce
       } = body
@@ -405,19 +504,86 @@ Format JSON attendu (tous les champs, null si inconnu) :
           title, type, property_tag, price, price_raw, surface_hab, surface_terrain,
           nb_chambres, localisation, adresse, etat, peb, source, url,
           date_publication, contact_nom, contact_type, contact_tel, contact_email,
-          email_contact, description, score, score_raison, notes, contact_status,
+          email_contact, description, score, score_raison, favorite, status, notes, contact_status,
           email_sent_at, last_contact_at, last_reply_at, gmail_thread_id, raw_annonce
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `)
-      const result = await stmt.bind(
+      const values = [
         title, type, property_tag, price, price_raw, surface_hab, surface_terrain,
         nb_chambres, localisation, adresse, etat, peb, source, propUrl,
         date_publication, contact_nom, contact_type, contact_tel, contact_email,
-        email_contact, description, score, score_raison, notes, contact_status,
+        email_contact, description, score, score_raison, normalizeFavorite(favorite), status, notes, contact_status,
         email_sent_at, last_contact_at, last_reply_at, gmail_thread_id, raw_annonce
-      ).run()
+      ].map(dbValue)
+
+      const result = await stmt.bind(...values).run()
 
       return json({ ok: true, id: result.meta.last_row_id })
+    }
+
+    // ── POST /api/properties/:id/rescore ─────────────────────────────────
+    const matchRescore = path.match(/^\/properties\/(\d+)\/rescore$/)
+    if (matchRescore && method === 'POST') {
+      const id = matchRescore[1]
+      const geminiKey = env.GEMINI_KEY
+      if (!geminiKey) return json({ error: 'GEMINI_KEY non configurée' }, 500)
+
+      const property = await env.DB.prepare('SELECT * FROM properties WHERE id = ?').bind(id).first()
+      if (!property) return json({ error: 'Not found' }, 404)
+
+      const body = await request.json().catch(() => ({}))
+      const savedSettings = await readSettings(env.DB)
+      const criteria = String(body.criteria || savedSettings.criteria || '').trim()
+      if (!criteria) return json({ error: 'Critères de recherche non configurés' }, 422)
+
+      const prompt = `Tu es un analyste immobilier belge. Recalcule uniquement le score d'adéquation de ce bien avec les critères acheteur.
+
+Retourne UNIQUEMENT un objet JSON valide, sans markdown ni backticks.
+
+Règles :
+- Utilise uniquement le CONTEXTE BIEN ci-dessous.
+- Compare le bien aux CRITÈRES ACHETEUR : budget, zone, type, surface, chambres, PEB, état, travaux, rendement ou autres priorités présentes.
+- "score" est obligatoire : nombre entier de 0 à 100.
+- "score_raison" est obligatoire : 1 à 2 phrases concrètes avec les points forts, les écarts aux critères et les incertitudes si des données manquent.
+- N'invente aucune caractéristique absente.
+
+CRITÈRES ACHETEUR :
+${criteria}
+
+CONTEXTE BIEN :
+${JSON.stringify(buildScoreContext(property), null, 2)}
+
+Format JSON attendu :
+{
+  "score": number,
+  "score_raison": string
+}`
+
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        }
+      )
+
+      const geminiData = await geminiRes.json()
+      if (geminiData.error) return json({ error: geminiData.error.message }, 500)
+
+      const text = geminiText(geminiData)
+      if (!text) return json({ error: 'Réponse Gemini vide ou bloquée' }, 502)
+
+      const scored = normalizeExtracted(parseGeminiJson(text))
+      if (scored.score === null || !scored.score_raison) {
+        return json({ error: 'Réponse Gemini sans score exploitable' }, 502)
+      }
+
+      await env.DB.prepare(
+        'UPDATE properties SET score = ?, score_raison = ?, updated_at = datetime(\'now\') WHERE id = ?'
+      ).bind(scored.score, scored.score_raison, id).run()
+
+      return json({ ok: true, data: { id: Number(id), score: scored.score, score_raison: scored.score_raison } })
     }
 
     // ── GET /api/properties/:id ───────────────────────────────────────────
@@ -438,7 +604,7 @@ Format JSON attendu (tous les champs, null si inconnu) :
           'title', 'type', 'property_tag', 'price', 'price_raw', 'surface_hab', 'surface_terrain',
           'nb_chambres', 'localisation', 'adresse', 'etat', 'peb', 'source', 'url',
           'date_publication', 'contact_nom', 'contact_type', 'contact_tel', 'contact_email',
-          'email_contact', 'description', 'score', 'score_raison', 'status', 'notes',
+          'email_contact', 'description', 'score', 'score_raison', 'favorite', 'status', 'notes',
           'contact_status', 'email_sent_at', 'last_contact_at', 'last_reply_at',
           'gmail_thread_id', 'raw_annonce'
         ];
@@ -448,7 +614,7 @@ Format JSON attendu (tous les champs, null si inconnu) :
         if (filteredKeys.length === 0) return json({ error: 'No valid fields provided' }, 400);
 
         const fields = filteredKeys.map(k => `${k} = ?`).join(', ')
-        const values = filteredKeys.map(k => body[k])
+        const values = filteredKeys.map(k => k === 'favorite' ? normalizeFavorite(body[k]) : dbValue(body[k]))
         
         await env.DB.prepare(
           `UPDATE properties SET ${fields}, updated_at = datetime('now') WHERE id = ?`

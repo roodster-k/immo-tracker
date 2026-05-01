@@ -1,7 +1,8 @@
 // src/components/Sidebar.jsx
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, PlusCircle, List, GitCompare, Settings } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, List, GitCompare, Settings, LogOut } from 'lucide-react'
+import { useAuth } from '../lib/AuthContext.jsx'
 
 const nav = [
   { to: '/',         icon: LayoutDashboard, label: 'Tableau de bord', short: 'Accueil' },
@@ -12,6 +13,8 @@ const nav = [
 ]
 
 export default function Sidebar() {
+  const { authEnabled, session, signOut } = useAuth()
+
   return (
     <aside className="sidebar" aria-label="Navigation principale">
       <div className="sidebar-brand">
@@ -31,17 +34,31 @@ export default function Sidebar() {
           >
             {({ isActive }) => (
               <>
-                <Icon size={17} strokeWidth={isActive ? 2.2 : 1.8} aria-hidden="true" />
+                <Icon size={16} strokeWidth={isActive ? 2.2 : 1.8} aria-hidden="true" style={{ flexShrink: 0 }} />
                 <span className="nav-link-label">{label}</span>
                 <span className="nav-link-short" aria-hidden="true">{short}</span>
               </>
             )}
           </NavLink>
         ))}
+        {authEnabled && session && (
+          <button type="button" onClick={signOut} className="nav-link sidebar-nav-logout">
+            <LogOut size={16} strokeWidth={1.8} aria-hidden="true" style={{ flexShrink: 0 }} />
+            <span className="nav-link-label">Déconnexion</span>
+            <span className="nav-link-short" aria-hidden="true">Sortir</span>
+          </button>
+        )}
       </nav>
 
       <div className="sidebar-footer">
-        Propulsé par Gemini AI
+        {authEnabled && session ? (
+          <button type="button" onClick={signOut} className="sidebar-logout">
+            <LogOut size={12} aria-hidden="true" />
+            Déconnexion
+          </button>
+        ) : (
+          'Propulsé par Gemini AI'
+        )}
       </div>
     </aside>
   )

@@ -84,6 +84,10 @@ export function getPropertyTag(p) {
   return `${p.localisation} - ${TYPE_LABELS[p.type] || p.type}`
 }
 
+export function isFavorite(p) {
+  return p?.favorite === true || p?.favorite === 1 || p?.favorite === '1'
+}
+
 export function extractFirstUrl(text) {
   const match = String(text || '').match(/https?:\/\/[^\s<>"']+/i)
   return match ? match[0].replace(/[),.;]+$/, '') : null
@@ -121,7 +125,7 @@ export function csvRow(p) {
     p.localisation, p.adresse, p.etat, p.peb, p.source, p.date_publication,
     p.url,
     p.contact_nom, p.contact_type, p.contact_tel, p.contact_email,
-    p.email_contact, p.score, STATUS_LABELS[p.status] || p.status,
+    p.email_contact, isFavorite(p) ? 'Oui' : 'Non', p.score, STATUS_LABELS[p.status] || p.status,
     CONTACT_STATUS_LABELS[p.contact_status] || p.contact_status,
     p.email_sent_at, p.last_contact_at, p.last_reply_at, p.gmail_thread_id, p.notes,
   ]
@@ -132,5 +136,6 @@ export const CSV_HEADERS = [
   'Titre','Type','Tag','Prix','Surface hab.','Terrain','Chambres','Localisation',
   'Adresse','État','PEB','Source','Date pub.','Lien annonce','Contact','Type contact','Tél','Email',
   'Email suggéré',
+  'Favori',
   'Score','Statut','Suivi contact','Email envoyé le','Dernier contact','Dernière réponse','Thread Gmail','Notes'
 ].map(v => `"${v}"`).join(',')

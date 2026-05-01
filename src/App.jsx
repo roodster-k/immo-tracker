@@ -1,6 +1,7 @@
 // src/App.jsx
 import React from 'react'
 import { Routes, Route } from 'react-router-dom'
+import { AuthProvider, useAuth } from './lib/AuthContext.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import AddProperty from './pages/AddProperty.jsx'
@@ -9,8 +10,22 @@ import PropertyDetail from './pages/PropertyDetail.jsx'
 import Compare from './pages/Compare.jsx'
 import Settings from './pages/Settings.jsx'
 import NotFound from './pages/NotFound.jsx'
+import Login from './pages/Login.jsx'
+import { Spinner } from './components/ui.jsx'
 
-export default function App() {
+function AppShell() {
+  const { ready, authEnabled, session } = useAuth()
+
+  if (!ready) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100dvh' }}>
+        <Spinner size={32} />
+      </div>
+    )
+  }
+
+  if (authEnabled && !session) return <Login />
+
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">Aller au contenu</a>
@@ -27,5 +42,13 @@ export default function App() {
         </Routes>
       </main>
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
   )
 }

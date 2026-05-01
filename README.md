@@ -8,7 +8,7 @@ Application React + Cloudflare Pages/D1/Workers pour suivre vos recherches immob
 - **Hébergement** : Cloudflare Pages
 - **Base de données** : Cloudflare D1 (SQLite serverless, gratuit)
 - **Backend** : Cloudflare Pages Functions (Workers)
-- **IA** : Google Gemini 2.0 Flash (via clé API)
+- **IA** : Google Gemini 2.5 Flash (via clé API)
 
 ## Fonctionnalités
 
@@ -58,6 +58,17 @@ wrangler d1 execute immo-tracker-db --file=schema.sql
 wrangler secret put GEMINI_KEY
 # → coller votre clé AIza... quand demandé
 ```
+
+### 4bis. Protéger l'accès avec Supabase Auth
+
+Créer un projet Supabase, activer l'authentification email/password, puis ajouter ces variables dans Cloudflare Pages :
+
+```bash
+npx wrangler pages secret put SUPABASE_URL --project-name=immo-tracker
+npx wrangler pages secret put SUPABASE_ANON_KEY --project-name=immo-tracker
+```
+
+En local, ajouter les mêmes valeurs dans `.dev.vars`. Si ces variables ne sont pas configurées, l'application reste ouverte pour faciliter le développement.
 
 ### 5. Build et déploiement
 

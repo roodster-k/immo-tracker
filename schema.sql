@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS properties (
   description TEXT,
   score INTEGER,
   score_raison TEXT,
+  favorite INTEGER DEFAULT 0,
   status TEXT DEFAULT 'nouveau',  -- nouveau | a_contacter | contacte | a_relancer | visite_planifiee | visite_faite | offre | dossier_envoye | sous_option | vendu | archive
   notes TEXT,
   contact_status TEXT DEFAULT 'pas_contacte',
