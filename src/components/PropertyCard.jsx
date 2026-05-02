@@ -1,7 +1,7 @@
 // src/components/PropertyCard.jsx
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bed, Ruler, MapPin, Calendar, Tag, Star } from 'lucide-react'
+import { Bed, Ruler, MapPin, Calendar, Tag, Star, StickyNote } from 'lucide-react'
 import { ScorePill, StatusBadge, Card } from './ui.jsx'
 import { formatPrice, formatDate, getPropertyTag, isFavorite } from '../lib/utils.js'
 
@@ -125,6 +125,25 @@ export default function PropertyCard({ property, onSelect, selected, onToggleFav
           <span style={{ color: 'var(--ink-3)', fontStyle: 'italic' }}>{p.etat}</span>
         )}
       </div>
+
+      {/* Notes preview */}
+      {p.notes && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 5,
+          marginBottom: 10,
+          padding: '5px 8px',
+          background: 'var(--surface-2, rgba(0,0,0,0.03))',
+          borderRadius: 6,
+          fontSize: 12,
+          color: 'var(--ink-2)',
+          lineHeight: 1.4,
+        }}>
+          <StickyNote size={11} style={{ flexShrink: 0, marginTop: 2, color: 'var(--gold)' }} aria-hidden="true" />
+          <span className="line-clamp-2">{p.notes}</span>
+        </div>
+      )}
 
       {/* Footer */}
       <div style={{
