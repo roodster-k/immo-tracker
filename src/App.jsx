@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import AddProperty from './pages/AddProperty.jsx'
 import Properties from './pages/Properties.jsx'
+import Archives from './pages/Archives.jsx'
 import PropertyDetail from './pages/PropertyDetail.jsx'
 import Compare from './pages/Compare.jsx'
 import Settings from './pages/Settings.jsx'
@@ -36,6 +37,7 @@ function AppShell() {
           <Route path="/add"        element={<AddProperty />} />
           <Route path="/biens"      element={<Properties />} />
           <Route path="/biens/:id"  element={<PropertyDetail />} />
+          <Route path="/archives"   element={<Archives />} />
           <Route path="/comparer"   element={<Compare />} />
           <Route path="/settings"   element={<Settings />} />
           <Route path="*"           element={<NotFound />} />

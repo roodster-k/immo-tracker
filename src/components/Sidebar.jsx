@@ -1,13 +1,14 @@
 // src/components/Sidebar.jsx
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, PlusCircle, List, GitCompare, Settings, LogOut } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, List, Archive, GitCompare, Settings, LogOut } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext.jsx'
 
 const nav = [
   { to: '/',         icon: LayoutDashboard, label: 'Tableau de bord', short: 'Accueil' },
   { to: '/add',      icon: PlusCircle,      label: 'Ajouter un bien', short: 'Ajouter' },
   { to: '/biens',    icon: List,            label: 'Mes biens',       short: 'Biens' },
+  { to: '/archives', icon: Archive,         label: 'Archives',        short: 'Archives' },
   { to: '/comparer', icon: GitCompare,      label: 'Comparer',        short: 'Comparer' },
   { to: '/settings', icon: Settings,        label: 'Paramètres',      short: 'Réglages' },
 ]

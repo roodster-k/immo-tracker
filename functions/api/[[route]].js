@@ -473,6 +473,16 @@ Format JSON attendu (tous les champs, null si inconnu) :
       return json({ ok: true, data: extracted })
     }
 
+    // ── GET /api/sources ─────────────────────────────────────────────────
+    if (path === '/sources' && method === 'GET') {
+      const { results } = await env.DB.prepare(
+        `SELECT source, COUNT(*) as count FROM properties
+         WHERE source IS NOT NULL AND source != ''
+         GROUP BY source ORDER BY count DESC`
+      ).all()
+      return json({ ok: true, data: results })
+    }
+
     // ── GET /api/properties ───────────────────────────────────────────────
     if (path === '/properties' && method === 'GET') {
       const status = url.searchParams.get('status')

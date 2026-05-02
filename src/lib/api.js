@@ -52,6 +52,9 @@ export const deleteProperty = (id) =>
 export const extractAnnonce = (body) =>
   req('/extract', { method: 'POST', body })
 
+// Sources (distinct sites/agencies from properties)
+export const getSources = () => req('/sources')
+
 // Settings
 export const getSettings = () => req('/settings')
 export const saveSettings = (body) =>

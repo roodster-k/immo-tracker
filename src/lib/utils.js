@@ -57,6 +57,11 @@ export const STATUS_LABELS = {
 
 export const STATUS_OPTIONS = Object.entries(STATUS_LABELS)
 
+export const ARCHIVE_STATUSES = new Set(['sous_option', 'vendu', 'archive'])
+
+export const ACTIVE_STATUS_OPTIONS = STATUS_OPTIONS.filter(([val]) => !ARCHIVE_STATUSES.has(val))
+export const ARCHIVE_STATUS_OPTIONS = STATUS_OPTIONS.filter(([val]) => ARCHIVE_STATUSES.has(val))
+
 export const CONTACT_STATUS_LABELS = {
   pas_contacte:      'Pas contacté',
   email_prepare:     'Email préparé',

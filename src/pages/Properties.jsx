@@ -1,27 +1,65 @@
 // src/pages/Properties.jsx
 import React, { useEffect, useState } from 'react'
 import { Search, Download, SlidersHorizontal } from 'lucide-react'
-import { getProperties, updateProperty } from '../lib/api.js'
+import { getProperties, getSources, updateProperty } from '../lib/api.js'
 import PropertyCard from '../components/PropertyCard.jsx'
 import { Button, Spinner, Empty } from '../components/ui.jsx'
-import { CONTACT_STATUS_LABELS, STATUS_OPTIONS, CSV_HEADERS, csvRow, getPropertyTag, isFavorite } from '../lib/utils.js'
+import {
+  CONTACT_STATUS_LABELS,
+  ACTIVE_STATUS_OPTIONS,
+  ARCHIVE_STATUS_OPTIONS,
+  ARCHIVE_STATUSES,
+  CSV_HEADERS,
+  csvRow,
+  getPropertyTag,
+  isFavorite,
+} from '../lib/utils.js'
 
-export default function Properties() {
+function usePersistedFilter(key, defaultValue) {
+  const [value, setValue] = useState(() => {
+    try { return localStorage.getItem(key) ?? defaultValue } catch { return defaultValue }
+  })
+  function set(v) {
+    setValue(v)
+    try { localStorage.setItem(key, v) } catch {}
+  }
+  return [value, set]
+}
+
+export default function Properties({ mode = 'active' }) {
+  const prefix = mode === 'archives' ? 'arch' : 'biens'
+  const isArchive = mode === 'archives'
+  const statusOptions = isArchive ? ARCHIVE_STATUS_OPTIONS : ACTIVE_STATUS_OPTIONS
+
   const [properties, setProperties] = useState([])
+  const [sources, setSources] = useState([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [favoriteFilter, setFavoriteFilter] = useState('all')
-  const [sortBy, setSortBy] = useState('date')
+  const [search, setSearch] = usePersistedFilter(`${prefix}_search`, '')
+  const [statusFilter, setStatusFilter] = usePersistedFilter(`${prefix}_status`, 'all')
+  const [sourceFilter, setSourceFilter] = usePersistedFilter(`${prefix}_source`, 'all')
+  const [favoriteFilter, setFavoriteFilter] = usePersistedFilter(`${prefix}_favorite`, 'all')
+  const [sortBy, setSortBy] = usePersistedFilter(`${prefix}_sort`, 'date')
 
   useEffect(() => {
-    getProperties()
-      .then(r => setProperties(r.data || []))
+    Promise.all([getProperties(), getSources()])
+      .then(([props, srcs]) => {
+        setProperties(props.data || [])
+        setSources(srcs.data || [])
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
-  const filtered = properties
+  // Guard against a persisted status that doesn't belong to this mode
+  const validStatus = statusFilter === 'all' || statusOptions.some(([v]) => v === statusFilter)
+  const effectiveStatusFilter = validStatus ? statusFilter : 'all'
+
+  const baseProperties = properties.filter(p => {
+    const inArchive = ARCHIVE_STATUSES.has(p.status)
+    return isArchive ? inArchive : !inArchive
+  })
+
+  const filtered = baseProperties
     .filter(p => {
       const q = search.toLowerCase()
       if (q && ![
@@ -34,7 +72,8 @@ export default function Properties() {
         p.contact_nom,
         CONTACT_STATUS_LABELS[p.contact_status],
       ].some(v => v?.toLowerCase().includes(q))) return false
-      if (statusFilter !== 'all' && p.status !== statusFilter) return false
+      if (effectiveStatusFilter !== 'all' && p.status !== effectiveStatusFilter) return false
+      if (sourceFilter !== 'all' && p.source !== sourceFilter) return false
       if (favoriteFilter === 'favorites' && !isFavorite(p)) return false
       return true
     })
@@ -57,11 +96,11 @@ export default function Properties() {
   }
 
   function exportCSV() {
-    const content = [CSV_HEADERS, ...properties.map(csvRow)].join('\n')
+    const content = [CSV_HEADERS, ...baseProperties.map(csvRow)].join('\n')
     const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `immo-tracker-${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `immo-tracker-${isArchive ? 'archives-' : ''}${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
   }
 
@@ -77,24 +116,28 @@ export default function Properties() {
     cursor: 'pointer',
   }
 
+  const title = isArchive ? 'Archives' : 'Mes biens'
+  const countLabel = isArchive
+    ? `${baseProperties.length} bien${baseProperties.length !== 1 ? 's' : ''} archivé${baseProperties.length !== 1 ? 's' : ''}`
+    : `${baseProperties.length} bien${baseProperties.length !== 1 ? 's' : ''} en suivi`
+
   return (
     <div className="page-shell">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Mes biens</h1>
+          <h1 className="page-title">{title}</h1>
           <p className="page-subtitle">
-            {properties.length} bien{properties.length !== 1 ? 's' : ''} en suivi
-            {filtered.length !== properties.length && ` · ${filtered.length} affiché${filtered.length !== 1 ? 's' : ''}`}
+            {countLabel}
+            {filtered.length !== baseProperties.length && ` · ${filtered.length} affiché${filtered.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <Button variant="secondary" size="sm" onClick={exportCSV} disabled={!properties.length}>
+        <Button variant="secondary" size="sm" onClick={exportCSV} disabled={!baseProperties.length}>
           <Download size={14} aria-hidden="true" /> Exporter CSV
         </Button>
       </div>
 
       {/* Filters */}
       <div className="filters-bar">
-        {/* Search */}
         <div className="search-wrapper" style={{ position: 'relative', flex: '1 1 220px', minWidth: 0 }}>
           <Search
             size={14}
@@ -126,14 +169,28 @@ export default function Properties() {
         <SlidersHorizontal size={15} style={{ color: 'var(--ink-3)', flexShrink: 0 }} aria-hidden="true" />
 
         <select
-          value={statusFilter}
+          value={effectiveStatusFilter}
           onChange={e => setStatusFilter(e.target.value)}
           className="filter-select ui-input"
           style={selectStyle}
         >
           <option value="all">Tous les statuts</option>
-          {STATUS_OPTIONS.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
+          {statusOptions.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
         </select>
+
+        {sources.length > 0 && (
+          <select
+            value={sourceFilter}
+            onChange={e => setSourceFilter(e.target.value)}
+            className="filter-select ui-input"
+            style={selectStyle}
+          >
+            <option value="all">Toutes les sources</option>
+            {sources.map(({ source, count }) => (
+              <option key={source} value={source}>{source} ({count})</option>
+            ))}
+          </select>
+        )}
 
         <select
           value={favoriteFilter}
@@ -165,7 +222,7 @@ export default function Properties() {
         <Empty
           icon={Search}
           title="Aucun résultat"
-          desc="Modifiez vos filtres ou ajoutez un nouveau bien."
+          desc={isArchive ? 'Aucun bien archivé pour le moment.' : 'Modifiez vos filtres ou ajoutez un nouveau bien.'}
         />
       ) : (
         <div className="responsive-grid">
