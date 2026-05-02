@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TrendingUp, Home, Eye, Star, PlusCircle, ArrowRight, MapPinned, BadgeCheck, MailCheck, Building2, Euro, Ruler } from 'lucide-react'
 import { getProperties } from '../lib/api.js'
-import { CONTACT_STATUS_LABELS, formatPrice, STATUS_LABELS, TYPE_LABELS, getPropertyTag } from '../lib/utils.js'
+import { CONTACT_STATUS_LABELS, formatPrice, STATUS_LABELS, TYPE_LABELS, getPropertyTag, getDisplaySource } from '../lib/utils.js'
 import { Card, Button, ScoreBar, StatusBadge, Spinner, Empty } from '../components/ui.jsx'
 
 const DEMAND_STATUSES = new Set(['sous_option', 'vendu'])
@@ -127,6 +127,15 @@ export default function Dashboard() {
   const apartmentAvgSurface = average(apartmentDemandSurfaces)
   const emailsSent = properties.filter(p => p.email_sent_at || ['email_envoye', 'reponse_recue', 'relance_a_faire', 'relance_envoyee'].includes(p.contact_status)).length
   const repliesReceived = properties.filter(p => p.last_reply_at || p.contact_status === 'reponse_recue').length
+  const bySite = [...properties
+    .reduce((acc, p) => {
+      const site = getDisplaySource(p)
+      if (site && site !== '—') acc.set(site, (acc.get(site) || 0) + 1)
+      return acc
+    }, new Map())
+    .entries()]
+    .sort((a, b) => b[1] - a[1])
+
   const byContactStatus = properties.reduce((acc, p) => {
     const contactStatus = p.contact_status || 'pas_contacte'
     acc[contactStatus] = (acc[contactStatus] || 0) + 1
@@ -437,6 +446,25 @@ export default function Dashboard() {
                   ))}
                 </div>
               </Card>
+
+              {/* Sources */}
+              {bySite.length > 0 && (
+                <Card>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--ink)', fontWeight: 400, marginBottom: 14 }}>
+                    Sources
+                  </h2>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                    {bySite.map(([site, count]) => (
+                      <div key={site} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 13, color: 'var(--ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                          {site}
+                        </span>
+                        <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--ink)', flexShrink: 0 }}>{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
 
               {/* Suivi contact */}
               <Card>

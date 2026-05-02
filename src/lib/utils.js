@@ -93,6 +93,17 @@ export function isFavorite(p) {
   return p?.favorite === true || p?.favorite === 1 || p?.favorite === '1'
 }
 
+// For Agence/Particulier sources, return the URL domain instead of the generic label
+export function getDisplaySource(property) {
+  const source = property?.source || ''
+  if ((source === 'Agence' || source === 'Particulier') && property?.url) {
+    try {
+      return new URL(property.url).hostname.toLowerCase().replace(/^www\./, '')
+    } catch {}
+  }
+  return source || '—'
+}
+
 export function extractFirstUrl(text) {
   const match = String(text || '').match(/https?:\/\/[^\s<>"']+/i)
   return match ? match[0].replace(/[),.;]+$/, '') : null

@@ -1,7 +1,7 @@
 // src/pages/Properties.jsx
 import React, { useEffect, useState } from 'react'
 import { Search, Download, SlidersHorizontal } from 'lucide-react'
-import { getProperties, getSources, updateProperty } from '../lib/api.js'
+import { getProperties, updateProperty } from '../lib/api.js'
 import PropertyCard from '../components/PropertyCard.jsx'
 import { Button, Spinner, Empty } from '../components/ui.jsx'
 import {
@@ -12,6 +12,7 @@ import {
   CSV_HEADERS,
   csvRow,
   getPropertyTag,
+  getDisplaySource,
   isFavorite,
 } from '../lib/utils.js'
 
@@ -32,7 +33,6 @@ export default function Properties({ mode = 'active' }) {
   const statusOptions = isArchive ? ARCHIVE_STATUS_OPTIONS : ACTIVE_STATUS_OPTIONS
 
   const [properties, setProperties] = useState([])
-  const [sources, setSources] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = usePersistedFilter(`${prefix}_search`, '')
   const [statusFilter, setStatusFilter] = usePersistedFilter(`${prefix}_status`, 'all')
@@ -41,11 +41,8 @@ export default function Properties({ mode = 'active' }) {
   const [sortBy, setSortBy] = usePersistedFilter(`${prefix}_sort`, 'date')
 
   useEffect(() => {
-    Promise.all([getProperties(), getSources()])
-      .then(([props, srcs]) => {
-        setProperties(props.data || [])
-        setSources(srcs.data || [])
-      })
+    getProperties()
+      .then(r => setProperties(r.data || []))
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
@@ -53,6 +50,16 @@ export default function Properties({ mode = 'active' }) {
   // Guard against a persisted status that doesn't belong to this mode
   const validStatus = statusFilter === 'all' || statusOptions.some(([v]) => v === statusFilter)
   const effectiveStatusFilter = validStatus ? statusFilter : 'all'
+
+  // Derive distinct sources from loaded properties (with domain resolution for Agence/Particulier)
+  const availableSources = [...properties
+    .reduce((acc, p) => {
+      const site = getDisplaySource(p)
+      if (site && site !== '—') acc.set(site, (acc.get(site) || 0) + 1)
+      return acc
+    }, new Map())
+    .entries()]
+    .sort((a, b) => b[1] - a[1])
 
   const baseProperties = properties.filter(p => {
     const inArchive = ARCHIVE_STATUSES.has(p.status)
@@ -73,7 +80,7 @@ export default function Properties({ mode = 'active' }) {
         CONTACT_STATUS_LABELS[p.contact_status],
       ].some(v => v?.toLowerCase().includes(q))) return false
       if (effectiveStatusFilter !== 'all' && p.status !== effectiveStatusFilter) return false
-      if (sourceFilter !== 'all' && p.source !== sourceFilter) return false
+      if (sourceFilter !== 'all' && getDisplaySource(p) !== sourceFilter) return false
       if (favoriteFilter === 'favorites' && !isFavorite(p)) return false
       return true
     })
@@ -178,7 +185,7 @@ export default function Properties({ mode = 'active' }) {
           {statusOptions.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
         </select>
 
-        {sources.length > 0 && (
+        {availableSources.length > 0 && (
           <select
             value={sourceFilter}
             onChange={e => setSourceFilter(e.target.value)}
@@ -186,8 +193,8 @@ export default function Properties({ mode = 'active' }) {
             style={selectStyle}
           >
             <option value="all">Toutes les sources</option>
-            {sources.map(({ source, count }) => (
-              <option key={source} value={source}>{source} ({count})</option>
+            {availableSources.map(([site, count]) => (
+              <option key={site} value={site}>{site} ({count})</option>
             ))}
           </select>
         )}
