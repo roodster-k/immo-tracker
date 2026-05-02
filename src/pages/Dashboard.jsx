@@ -8,6 +8,20 @@ import { Card, Button, ScoreBar, StatusBadge, Spinner, Empty } from '../componen
 
 const DEMAND_STATUSES = new Set(['sous_option', 'vendu'])
 
+const PORTAL_URLS = {
+  'Immoweb':    'https://www.immoweb.be',
+  'Zimmo':      'https://www.zimmo.be',
+  'Century 21': 'https://www.century21.be',
+  'Athome':     'https://www.athome.be',
+  'Logic-immo': 'https://www.logic-immo.be',
+}
+
+function getSiteUrl(site) {
+  if (PORTAL_URLS[site]) return PORTAL_URLS[site]
+  if (site.includes('.')) return `https://${site}`
+  return null
+}
+
 function isApartment(property) {
   const label = `${property.type || ''} ${getPropertyTag(property)}`.toLowerCase()
   return label.includes('appartement') || label.includes('studio')
@@ -454,14 +468,30 @@ export default function Dashboard() {
                     Sources
                   </h2>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                    {bySite.map(([site, count]) => (
-                      <div key={site} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 13, color: 'var(--ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
-                          {site}
-                        </span>
-                        <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--ink)', flexShrink: 0 }}>{count}</span>
-                      </div>
-                    ))}
+                    {bySite.map(([site, count]) => {
+                      const href = getSiteUrl(site)
+                      return (
+                        <div key={site} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                          {href ? (
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ fontSize: 13, color: 'var(--blue)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, textDecoration: 'none' }}
+                              onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                              onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
+                            >
+                              {site}
+                            </a>
+                          ) : (
+                            <span style={{ fontSize: 13, color: 'var(--ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                              {site}
+                            </span>
+                          )}
+                          <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--ink)', flexShrink: 0 }}>{count}</span>
+                        </div>
+                      )
+                    })}
                   </div>
                 </Card>
               )}
